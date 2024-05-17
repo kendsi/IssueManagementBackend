@@ -40,3 +40,4 @@ backend/src/main/java/com/causwe/.DS_Store
 backend/.DS_Store
 .DS_Store
 backend/src/main/resources/application.properties
+node_modules/
