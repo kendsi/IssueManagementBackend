@@ -16,7 +16,7 @@ export default function Login() {
   const handleLogin = (e) => {
     e.preventDefault();
 
-    const apiUrl = "https://swe.mldljyh.tech/api/users/signup";
+    const apiUrl = "https://swe.mldljyh.tech/api/users/login";
 
     const requestData = {
       id: id,
@@ -36,12 +36,16 @@ export default function Login() {
       .then((response) => {
         if (response.status === 200) {
           return response.json();
+        } else if (response.status === 401) {
+          throw new Error("로그인에 실패했습니다.");
         } else {
-          throw new Error("Login failed");
+          throw new Error("로그인 요청에 실패했습니다.");
         }
       })
+
       .then((data) => {
-        console.log(data);
+        const user = data.user;
+        console.log(user);
         // history.push("/home");
       })
       .catch((error) => {
