@@ -51,6 +51,10 @@ public class IssueController {
         Issue issue = new Issue(issueData.getTitle(), issueData.getDescription(), currentUser);
         issue.setProject(project);
         Issue newIssue = issueRepository.save(issue);
+
+        // Embed the issue title using Azure OpenAI and store
+        issueRepository.embedIssueTitle(newIssue.getId(), newIssue.getTitle());
+
         return new ResponseEntity<>(newIssue, HttpStatus.CREATED);
     }
 
@@ -179,13 +183,14 @@ public class IssueController {
     }
 
     @GetMapping("/{id}/recommendedAssignees")
-    public ResponseEntity<List<Long>> getRecommendedAssignees(@PathVariable Long projectId, @PathVariable Long id) {
+    public ResponseEntity<List<User>> getRecommendedAssignees(@PathVariable Long projectId, @PathVariable Long id) {
         Project project = getProject(projectId);
         Optional<Issue> issue = issueRepository.findByIdAndProject(id, project);
 
         if (issue.isPresent()) {
-            List<Long> assigneeIds = issueRepository.findRecommendedAssignees(issue.get().getDescription()); // Update to filter by project
-            return new ResponseEntity<>(assigneeIds, HttpStatus.OK);
+            List<Long> assigneeIds = issueRepository.findRecommendedAssigneesByProjectId(projectId, id);
+            List<User> assignees = userRepository.findAllById(assigneeIds);
+            return new ResponseEntity<>(assignees, HttpStatus.OK);
         } else {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
