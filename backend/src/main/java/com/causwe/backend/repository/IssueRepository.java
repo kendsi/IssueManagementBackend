@@ -31,7 +31,7 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
             "FROM issue_embeddings e " +
             "INNER JOIN issues i ON i.id = e.issue_id " +
             "WHERE i.project_id = :projectId AND i.status = 'RESOLVED' " +
-            "ORDER BY e.issue_embedding <#> (SELECT e2.issue_embedding FROM issue_embeddings e2 WHERE e2.issue_id = :issueId) " +
+            "ORDER BY e.issue_embedding <=> (SELECT e2.issue_embedding FROM issue_embeddings e2 WHERE e2.issue_id = :issueId) " +
             "LIMIT 3", nativeQuery = true)
     List<Long> findRecommendedAssigneesByProjectId(@Param("projectId") Long projectId, @Param("issueId") Long issueId);
 

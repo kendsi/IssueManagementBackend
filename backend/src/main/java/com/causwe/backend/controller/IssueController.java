@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/projects/{projectId}/issues")
@@ -189,10 +190,20 @@ public class IssueController {
 
         if (issue.isPresent()) {
             List<Long> assigneeIds = issueRepository.findRecommendedAssigneesByProjectId(projectId, id);
-            List<User> assignees = userRepository.findAllById(assigneeIds);
-            return new ResponseEntity<>(assignees, HttpStatus.OK);
+            List<User> unorderedAssignees = userRepository.findAllById(assigneeIds);
+
+            // ID 목록 순서대로 사용자를 정렬
+            List<User> orderedAssignees = assigneeIds.stream()
+                    .map(assigneeId -> unorderedAssignees.stream()
+                            .filter(user -> user.getId().equals(assigneeId))
+                            .findFirst()
+                            .orElse(null))
+                    .collect(Collectors.toList());
+
+            return new ResponseEntity<>(orderedAssignees, HttpStatus.OK);
         } else {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
+
 }
