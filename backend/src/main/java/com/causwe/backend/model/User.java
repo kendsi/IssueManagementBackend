@@ -3,8 +3,12 @@ package com.causwe.backend.model;
 import jakarta.persistence.*;
 import java.io.Serializable;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+
 @Entity
 @Table(name = "users")
+@JsonIgnoreProperties(value = {"password"}, allowSetters = true)
 public class User implements Serializable {
 
     private static final long serialVersionUID = 1L;

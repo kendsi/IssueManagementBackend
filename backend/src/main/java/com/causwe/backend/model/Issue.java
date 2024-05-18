@@ -5,9 +5,11 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @Entity
 @Table(name = "issues")
+@JsonIgnoreProperties(value = {"comments"}, allowSetters = true)
 public class Issue {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -42,6 +44,10 @@ public class Issue {
 
     @OneToMany(mappedBy = "issue", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Comment> comments = new ArrayList<>();
+
+    @ManyToOne
+    @JoinColumn(name = "project_id", nullable = false)
+    private Project project;
 
     public enum Priority {
         BLOCKER, CRITICAL, MAJOR, MINOR, TRIVIAL
@@ -145,5 +151,13 @@ public class Issue {
     public void addComment(Comment comment) {
         comments.add(comment);
         comment.setIssue(this);
+    }
+
+    public Project getProject() {
+        return project;
+    }
+
+    public void setProject(Project project) {
+        this.project = project;
     }
 }

@@ -3,8 +3,10 @@ package com.causwe.backend.controller;
 import com.causwe.backend.exceptions.UnauthorizedException;
 import com.causwe.backend.model.Comment;
 import com.causwe.backend.model.Issue;
+import com.causwe.backend.model.Project;
 import com.causwe.backend.model.User;
 import com.causwe.backend.repository.IssueRepository;
+import com.causwe.backend.repository.ProjectRepository;
 import com.causwe.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -15,7 +17,7 @@ import java.util.List;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/issues")
+@RequestMapping("/api/projects/{projectId}/issues")
 public class IssueController {
 
     @Autowired
@@ -24,35 +26,45 @@ public class IssueController {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private ProjectRepository projectRepository;
+
+    // Project ID로 프로젝트를 찾는 메소드
+    private Project getProject(Long projectId) {
+        Optional<Project> project = projectRepository.findById(projectId);
+        if (project.isPresent()) {
+            return project.get();
+        } else {
+            throw new IllegalArgumentException("Project not found with ID: " + projectId);
+        }
+    }
+
     @PostMapping("")
-    public ResponseEntity<Issue> createIssue(@RequestBody Issue issueData, @CookieValue(value = "memberId", required = false) Long memberId) {
-        System.out.println("Member ID: " + memberId);
+    public ResponseEntity<Issue> createIssue(@PathVariable Long projectId, @RequestBody Issue issueData, @CookieValue(value = "memberId", required = false) Long memberId) {
         User currentUser = userRepository.findById(memberId).orElse(null);
         if (currentUser == null || memberId == null) {
             throw new UnauthorizedException("User not logged in");
         }
 
-        // 새 Issue 객체 생성
+        Project project = getProject(projectId);
+
         Issue issue = new Issue(issueData.getTitle(), issueData.getDescription(), currentUser);
-
+        issue.setProject(project);
         Issue newIssue = issueRepository.save(issue);
-
-        // TODO: 임베딩을 생성해서 'issue_embeddings' 테이블에 저장
-        // ...
-
         return new ResponseEntity<>(newIssue, HttpStatus.CREATED);
     }
 
-
     @GetMapping("")
-    public ResponseEntity<List<Issue>> getAllIssues() {
-        List<Issue> issues = issueRepository.findAll();
+    public ResponseEntity<List<Issue>> getAllIssues(@PathVariable Long projectId) {
+        Project project = getProject(projectId);
+        List<Issue> issues = issueRepository.findByProject(project);
         return new ResponseEntity<>(issues, HttpStatus.OK);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Issue> getIssueById(@PathVariable Long id) {
-        Optional<Issue> issue = issueRepository.findById(id);
+    public ResponseEntity<Issue> getIssueById(@PathVariable Long projectId, @PathVariable Long id) {
+        Project project = getProject(projectId);
+        Optional<Issue> issue = issueRepository.findByIdAndProject(id, project);
         if (issue.isPresent()) {
             return new ResponseEntity<>(issue.get(), HttpStatus.OK);
         } else {
@@ -61,14 +73,17 @@ public class IssueController {
     }
 
     @PostMapping("/{id}/comments")
-    public ResponseEntity<Comment> addComment(@PathVariable Long id, @RequestBody Comment comment, @CookieValue(value = "memberId", required = false) Long memberId) {
+    public ResponseEntity<Comment> addComment(@PathVariable Long projectId, @PathVariable Long id, @RequestBody Comment commentData, @CookieValue(value = "memberId", required = false) Long memberId) {
         User currentUser = userRepository.findById(memberId).orElse(null);
         if (currentUser == null || memberId == null) {
             throw new UnauthorizedException("User not logged in");
         }
-        Optional<Issue> issue = issueRepository.findById(id);
+
+        Project project = getProject(projectId);
+        Optional<Issue> issue = issueRepository.findByIdAndProject(id, project);
+
         if (issue.isPresent()) {
-            comment.setUser(currentUser);
+            Comment comment = new Comment(issue.get(), currentUser, commentData.getContent());
             issue.get().addComment(comment);
             issueRepository.save(issue.get());
             return new ResponseEntity<>(comment, HttpStatus.CREATED);
@@ -78,13 +93,15 @@ public class IssueController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Issue> updateIssue(@PathVariable Long id, @RequestBody Issue updatedIssue, @CookieValue(value = "memberId", required = false) Long memberId) {
+    public ResponseEntity<Issue> updateIssue(@PathVariable Long projectId, @PathVariable Long id, @RequestBody Issue updatedIssue, @CookieValue(value = "memberId", required = false) Long memberId) {
         User currentUser = userRepository.findById(memberId).orElse(null);
         if (currentUser == null || memberId == null) {
             throw new UnauthorizedException("User not logged in");
         }
 
-        Optional<Issue> existingIssue = issueRepository.findById(id);
+        Project project = getProject(projectId);
+        Optional<Issue> existingIssue = issueRepository.findByIdAndProject(id, project);
+
         if (existingIssue.isPresent()) {
             Issue issue = existingIssue.get();
 
@@ -92,18 +109,30 @@ public class IssueController {
             switch (currentUser.getRole()) {
                 case ADMIN:
                     // 관리자는 모든 필드를 업데이트 할 수 있다
-                    issue.setTitle(updatedIssue.getTitle());
-                    issue.setDescription(updatedIssue.getDescription());
-                    issue.setPriority(updatedIssue.getPriority());
-                    issue.setStatus(updatedIssue.getStatus());
+                    if (updatedIssue.getTitle() != null) {
+                        issue.setTitle(updatedIssue.getTitle());
+                    }
+                    if (updatedIssue.getDescription() != null) {
+                        issue.setDescription(updatedIssue.getDescription());
+                    }
+                    if (updatedIssue.getPriority() != null) {
+                        issue.setPriority(updatedIssue.getPriority());
+                    }
+                    if (updatedIssue.getStatus() != null) {
+                        issue.setStatus(updatedIssue.getStatus());
+                    }
                     if (updatedIssue.getAssignee() != null) {
                         issue.setAssignee(userRepository.findById(updatedIssue.getAssignee().getId()).orElse(null));
                     }
                     break;
                 case PL:
                     // PL은 priority, status, assignee을 업데이트 할 수 있다.
-                    issue.setPriority(updatedIssue.getPriority());
-                    issue.setStatus(updatedIssue.getStatus());
+                    if (updatedIssue.getPriority() != null) {
+                        issue.setPriority(updatedIssue.getPriority());
+                    }
+                    if (updatedIssue.getStatus() != null) {
+                        issue.setStatus(updatedIssue.getStatus());
+                    }
                     if (updatedIssue.getAssignee() != null) {
                         issue.setAssignee(userRepository.findById(updatedIssue.getAssignee().getId()).orElse(null));
                     }
@@ -131,29 +160,31 @@ public class IssueController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<Issue>> searchIssues(
-            @RequestParam(value = "assignee", required = false) Long assigneeId,
-            @RequestParam(value = "reporter", required = false) Long reporterId,
-            @RequestParam(value = "status", required = false) Issue.Status status) {
-
+    public ResponseEntity<List<Issue>> searchIssues(@PathVariable Long projectId,
+                                                    @RequestParam(value = "assignee", required = false) Long assigneeId,
+                                                    @RequestParam(value = "reporter", required = false) Long reporterId,
+                                                    @RequestParam(value = "status", required = false) Issue.Status status) {
+        Project project = getProject(projectId);
         if (assigneeId != null) {
             User assignee = userRepository.findById(assigneeId).orElse(null);
-            return new ResponseEntity<>(issueRepository.findByAssignee(assignee), HttpStatus.OK);
+            return new ResponseEntity<>(issueRepository.findByProjectAndAssignee(project, assignee), HttpStatus.OK);
         } else if (reporterId != null) {
             User reporter = userRepository.findById(reporterId).orElse(null);
-            return new ResponseEntity<>(issueRepository.findByReporter(reporter), HttpStatus.OK);
+            return new ResponseEntity<>(issueRepository.findByProjectAndReporter(project, reporter), HttpStatus.OK);
         } else if (status != null) {
-            return new ResponseEntity<>(issueRepository.findByStatus(status), HttpStatus.OK);
+            return new ResponseEntity<>(issueRepository.findByProjectAndStatus(project, status), HttpStatus.OK);
         } else {
-            return new ResponseEntity<>(issueRepository.findAll(), HttpStatus.OK);
+            return new ResponseEntity<>(issueRepository.findByProject(project), HttpStatus.OK);
         }
     }
 
     @GetMapping("/{id}/recommendedAssignees")
-    public ResponseEntity<List<Long>> getRecommendedAssignees(@PathVariable Long id) {
-        Optional<Issue> issue = issueRepository.findById(id);
+    public ResponseEntity<List<Long>> getRecommendedAssignees(@PathVariable Long projectId, @PathVariable Long id) {
+        Project project = getProject(projectId);
+        Optional<Issue> issue = issueRepository.findByIdAndProject(id, project);
+
         if (issue.isPresent()) {
-            List<Long> assigneeIds = issueRepository.findRecommendedAssignees(issue.get().getDescription());
+            List<Long> assigneeIds = issueRepository.findRecommendedAssignees(issue.get().getDescription()); // Update to filter by project
             return new ResponseEntity<>(assigneeIds, HttpStatus.OK);
         } else {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
