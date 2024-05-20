@@ -83,6 +83,24 @@ public class IssueService {
         }
     }
 
+    public boolean deleteComment(Long projectId, Long id, Long commentId, Long memberId) {
+        User currentUser = userService.getUserById(memberId);
+        if (currentUser == null) {
+            throw new UnauthorizedException("User not logged in");
+        }
+
+        Project project = getProject(projectId);
+        Optional<Issue> issue = issueRepository.findByIdAndProject(id, project);
+
+        if (issue.isPresent()) {
+            issue.get().deleteComment(commentId);
+            issueRepository.save(issue.get());
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     public Issue updateIssue(Long projectId, Long id, Issue updatedIssue, Long memberId) {
         User currentUser = userService.getUserById(memberId);
         if (currentUser == null) {

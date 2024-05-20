@@ -50,6 +50,16 @@ public class IssueController {
         }
     }
 
+    @DeleteMapping("/{id}/comments/{commentId}")
+    public ResponseEntity<Void> deleteComment(@PathVariable Long projectId, @PathVariable Long id, @PathVariable Long commentId, @CookieValue(value = "memberId", required = false) Long memberId) {
+        boolean isDeleted = issueService.deleteComment(projectId, id, commentId, memberId);
+        if (isDeleted) {
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        } else {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<Issue> updateIssue(@PathVariable Long projectId, @PathVariable Long id, @RequestBody Issue updatedIssue, @CookieValue(value = "memberId", required = false) Long memberId) {
         Issue updated = issueService.updateIssue(projectId, id, updatedIssue, memberId);
