@@ -128,6 +128,7 @@ public class IssueController {
                     }
                     if (updatedIssue.getAssignee() != null) {
                         issue.setAssignee(userRepository.findById(updatedIssue.getAssignee().getId()).orElse(null));
+                        issue.setStatus(Issue.Status.ASSIGNED);
                     }
                     break;
                 case PL:
@@ -140,6 +141,7 @@ public class IssueController {
                     }
                     if (updatedIssue.getAssignee() != null) {
                         issue.setAssignee(userRepository.findById(updatedIssue.getAssignee().getId()).orElse(null));
+                        issue.setStatus(Issue.Status.ASSIGNED);
                     }
                     break;
                 case DEV:

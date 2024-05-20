@@ -1,11 +1,13 @@
 package com.causwe.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "comments")
+@JsonIgnoreProperties(value = {"issue"}, allowSetters = true)
 public class Comment {
 
     @Id

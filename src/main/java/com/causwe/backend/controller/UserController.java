@@ -11,7 +11,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/users")
@@ -47,5 +49,14 @@ public class UserController {
         } else {
             return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
+    }
+
+    @GetMapping
+    public ResponseEntity<List<User>> getAllDevs() {
+        List<User> devUsers = userRepository.findAll().stream()
+                .filter(user -> user.getRole() == User.Role.DEV)
+                .collect(Collectors.toList());
+
+        return new ResponseEntity<>(devUsers, HttpStatus.OK);
     }
 }

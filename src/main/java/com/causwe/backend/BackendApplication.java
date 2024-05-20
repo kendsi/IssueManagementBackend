@@ -18,7 +18,7 @@ public class BackendApplication {
 		return new WebMvcConfigurer() {
 			@Override
 			public void addCorsMappings(CorsRegistry registry) {
-				registry.addMapping("/api/**").allowedOrigins("http://localhost:3000").allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS").allowCredentials(true).allowedHeaders("*").maxAge(3600); // Replace with your frontend URL
+				registry.addMapping("/api/**").allowedOrigins("http://localhost:3000").allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS").allowCredentials(true).allowedHeaders("*").exposedHeaders("Access-Control-Allow-Credentials").maxAge(3600); 
 			}
 		};
 	}
