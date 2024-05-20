@@ -1,0 +1,39 @@
+package com.causwe.backend.service;
+
+import com.causwe.backend.exceptions.UnauthorizedException;
+import com.causwe.backend.model.Project;
+import com.causwe.backend.model.User;
+import com.causwe.backend.repository.ProjectRepository;
+import com.causwe.backend.service.UserService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class ProjectService {
+
+    @Autowired
+    private ProjectRepository projectRepository;
+
+    @Autowired
+    private UserService userService;
+
+    public Project createProject(Project project, Long memberId) {
+        User currentUser = userService.getUserById(memberId);
+        if (currentUser == null) {
+            throw new UnauthorizedException("User not logged in");
+        }
+        return projectRepository.save(project);
+    }
+
+    public List<Project> getAllProjects() {
+        return projectRepository.findAll();
+    }
+
+    public Project getProjectById(Long id) {
+        Optional<Project> project = projectRepository.findById(id);
+        return project.orElse(null);
+    }
+}
