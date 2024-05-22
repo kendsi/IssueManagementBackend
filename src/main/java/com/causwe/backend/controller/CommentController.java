@@ -1,0 +1,46 @@
+package com.causwe.backend.controller;
+
+import com.causwe.backend.dto.CommentDTO;
+import com.causwe.backend.model.Comment;
+import com.causwe.backend.service.CommentService;
+
+import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/projects/{projectId}/issues/{issueId}/comments")
+
+
+public class CommentController {
+
+    @Autowired
+    private CommentService CommentService;
+
+    private ModelMapper modelMapper;
+
+    @PostMapping("")
+    public ResponseEntity<CommentDTO> addComment(@PathVariable Long issueId, @RequestBody CommentDTO commentData, @CookieValue(value = "memberId", required = false) Long memberId) {
+
+        Comment comment = CommentService.addComment(issueId, modelMapper.map(commentData, Comment.class), memberId);
+        
+        if (comment != null) {
+            CommentDTO commentDTO = modelMapper.map(comment, CommentDTO.class);
+            return new ResponseEntity<>(commentDTO, HttpStatus.CREATED);
+        } else {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
+
+    @DeleteMapping("{id}")
+    public ResponseEntity<Void> deleteComment(@PathVariable Long id, @CookieValue(value = "memberId", required = false) Long memberId) {
+        boolean isDeleted = CommentService.deleteComment(id, memberId);
+        if (isDeleted) {
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        } else {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
+}

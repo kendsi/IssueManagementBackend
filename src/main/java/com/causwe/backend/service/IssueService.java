@@ -1,7 +1,6 @@
 package com.causwe.backend.service;
 
 import com.causwe.backend.exceptions.UnauthorizedException;
-import com.causwe.backend.model.Comment;
 import com.causwe.backend.model.Issue;
 import com.causwe.backend.model.Project;
 import com.causwe.backend.model.User;
@@ -26,23 +25,14 @@ public class IssueService {
     @Autowired
     private UserService userService;
 
-    // Project ID로 프로젝트를 찾는 메소드
-    private Project getProject(Long projectId) {
-        Project project = projectService.getProjectById(projectId);
-        if (project == null) {
-            throw new IllegalArgumentException("Project not found with ID: " + projectId);
-        }
-        return project;
-    }
 
     public List<Issue> getAllIssues(Long projectId) {
-        Project project = getProject(projectId);
+        Project project = projectService.getProjectById(projectId);
         return issueRepository.findByProject(project);
     }
 
-    public Issue getIssueById(Long projectId, Long id) {
-        Project project = getProject(projectId);
-        Optional<Issue> issue = issueRepository.findByIdAndProject(id, project);
+    public Issue getIssueById(Long id) {
+        Optional<Issue> issue = issueRepository.findById(id);
         return issue.orElse(null);
     }
 
@@ -52,7 +42,7 @@ public class IssueService {
             throw new UnauthorizedException("User not logged in");
         }
 
-        Project project = getProject(projectId);
+        Project project = projectService.getProjectById(projectId);
 
         Issue issue = new Issue(issueData.getTitle(), issueData.getDescription(), currentUser);
         issue.setProject(project);
@@ -64,51 +54,13 @@ public class IssueService {
         return newIssue;
     }
 
-    public Comment addComment(Long projectId, Long id, Comment commentData, Long memberId) {
+    public Issue updateIssue(Long id, Issue updatedIssue, Long memberId) {
         User currentUser = userService.getUserById(memberId);
         if (currentUser == null) {
             throw new UnauthorizedException("User not logged in");
         }
 
-        Project project = getProject(projectId);
-        Optional<Issue> issue = issueRepository.findByIdAndProject(id, project);
-
-        if (issue.isPresent()) {
-            Comment comment = new Comment(issue.get(), currentUser, commentData.getContent());
-            issue.get().addComment(comment);
-            issueRepository.save(issue.get());
-            return comment;
-        } else {
-            return null;
-        }
-    }
-
-    public boolean deleteComment(Long projectId, Long id, Long commentId, Long memberId) {
-        User currentUser = userService.getUserById(memberId);
-        if (currentUser == null) {
-            throw new UnauthorizedException("User not logged in");
-        }
-
-        Project project = getProject(projectId);
-        Optional<Issue> issue = issueRepository.findByIdAndProject(id, project);
-
-        if (issue.isPresent()) {
-            issue.get().deleteComment(commentId);
-            issueRepository.save(issue.get());
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    public Issue updateIssue(Long projectId, Long id, Issue updatedIssue, Long memberId) {
-        User currentUser = userService.getUserById(memberId);
-        if (currentUser == null) {
-            throw new UnauthorizedException("User not logged in");
-        }
-
-        Project project = getProject(projectId);
-        Optional<Issue> existingIssue = issueRepository.findByIdAndProject(id, project);
+        Optional<Issue> existingIssue = issueRepository.findById(id);
 
         if (existingIssue.isPresent()) {
             Issue issue = existingIssue.get();
@@ -169,7 +121,7 @@ public class IssueService {
     }
 
     public List<Issue> searchIssues(Long projectId, Long assigneeId, Long reporterId, Issue.Status status) {
-        Project project = getProject(projectId);
+        Project project = projectService.getProjectById(projectId);
         if (assigneeId != null) {
             User assignee = userService.getUserById(assigneeId);
             return issueRepository.findByProjectAndAssignee(project, assignee);
@@ -184,8 +136,7 @@ public class IssueService {
     }
 
     public List<User> getRecommendedAssignees(Long projectId, Long id) {
-        Project project = getProject(projectId);
-        Optional<Issue> issue = issueRepository.findByIdAndProject(id, project);
+        Optional<Issue> issue = issueRepository.findById(id);
 
         if (issue.isPresent()) {
             List<Long> assigneeIds = issueRepository.findRecommendedAssigneesByProjectId(projectId, id);

@@ -1,10 +1,10 @@
 package com.causwe.backend.service;
 
 import com.causwe.backend.exceptions.UnauthorizedException;
+import com.causwe.backend.exceptions.ProjectNotFoundException;
 import com.causwe.backend.model.Project;
 import com.causwe.backend.model.User;
 import com.causwe.backend.repository.ProjectRepository;
-import com.causwe.backend.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -34,6 +34,6 @@ public class ProjectService {
 
     public Project getProjectById(Long id) {
         Optional<Project> project = projectRepository.findById(id);
-        return project.orElse(null);
+        return project.orElseThrow(() -> new ProjectNotFoundException(id));
     }
 }
