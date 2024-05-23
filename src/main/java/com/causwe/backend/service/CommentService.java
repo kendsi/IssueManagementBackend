@@ -46,16 +46,16 @@ public class CommentService {
     }
 
     // TODO 권한에 따라 삭제
-    public boolean deleteComment(Long commentId, Long memberId) {
+    public boolean deleteComment(Long id, Long memberId) {
         User currentUser = userService.getUserById(memberId);
         if (currentUser == null) {
             throw new UnauthorizedException("User not logged in");
         }
 
-        Optional<Comment> comment = commentRepository.findById(commentId);
+        Optional<Comment> comment = commentRepository.findById(id);
 
         if (comment.isPresent()) {
-            commentRepository.deleteById(commentId);
+            commentRepository.deleteById(id);
             return true;
         }
         else {
