@@ -22,6 +22,9 @@ public class UserService {
         }
         return userRepository.findById(userId).orElse(null);
     }
+    public User getUserByUsername(String username) {
+        return userRepository.findByUsername(username);
+    }
 
     public User createUser(User user) {
         if (userRepository.findByUsername(user.getUsername()) != null) {

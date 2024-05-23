@@ -25,7 +25,6 @@ public class CommentController {
 
     @GetMapping("")
     public ResponseEntity<List<CommentDTO>> getAllComment(@PathVariable Long issueId) {
-        System.out.println("check");
         List<Comment> comments = CommentService.getAllComments(issueId);
 
         List<CommentDTO> commentDTOs = comments

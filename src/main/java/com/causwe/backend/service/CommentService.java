@@ -3,6 +3,7 @@ package com.causwe.backend.service;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import com.causwe.backend.exceptions.UnauthorizedException;
 import com.causwe.backend.model.Comment;
@@ -12,6 +13,7 @@ import com.causwe.backend.repository.CommentRepository;
 
 import java.util.List;
 
+@Service
 public class CommentService {
 
     @Autowired

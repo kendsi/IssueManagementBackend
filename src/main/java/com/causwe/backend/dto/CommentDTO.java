@@ -10,17 +10,15 @@ import lombok.Setter;
 public class CommentDTO {
 
     private Long id;
-    private Long issueId;
-    private Long userId;
+    private String username;
     private String content;
     private LocalDateTime createdAt;
 
     public CommentDTO() {}
 
-    public CommentDTO(Long id, Long issueId, Long userId, String content, LocalDateTime createdAt) {
+    public CommentDTO(Long id, String username, String content, LocalDateTime createdAt) {
         this.id = id;
-        this.issueId = issueId;
-        this.userId = userId;
+        this.username = username;
         this.content = content;
         this.createdAt = createdAt;
     }
