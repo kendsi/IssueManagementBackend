@@ -10,7 +10,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Optional;
 
 
 public interface IssueRepository extends JpaRepository<Issue, Long> {
@@ -18,7 +17,6 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
     List<Issue> findByProjectAndAssignee(Project project, User assignee);
     List<Issue> findByProjectAndReporter(Project project, User reporter);
     List<Issue> findByProjectAndStatus(Project project, Issue.Status status);
-    Optional<Issue> findByIdAndProject(Long id, Project project);
 
     @Modifying
     @Transactional

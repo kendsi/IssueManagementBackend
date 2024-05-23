@@ -6,6 +6,11 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 @Entity
 @Table(name = "issues")
 public class Issue {
@@ -66,78 +71,6 @@ public class Issue {
         this.status = Status.NEW;
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public User getReporter() {
-        return reporter;
-    }
-
-    public void setReporter(User reporter) {
-        this.reporter = reporter;
-    }
-
-    public LocalDateTime getReportedDate() {
-        return reportedDate;
-    }
-
-    public void setReportedDate(LocalDateTime reportedDate) {
-        this.reportedDate = reportedDate;
-    }
-
-    public User getFixer() {
-        return fixer;
-    }
-
-    public void setFixer(User fixer) {
-        this.fixer = fixer;
-    }
-
-    public User getAssignee() {
-        return assignee;
-    }
-
-    public void setAssignee(User assignee) {
-        this.assignee = assignee;
-    }
-
-    public Priority getPriority() {
-        return priority;
-    }
-
-    public void setPriority(Priority priority) {
-        this.priority = priority;
-    }
-
-    public Status getStatus() {
-        return status;
-    }
-
-    public void setStatus(Status status) {
-        this.status = status;
-    }
-
     public List<Comment> getComments() {
         return comments;
     }
@@ -151,11 +84,12 @@ public class Issue {
         comment.setIssue(this);
     }
 
-    public Project getProject() {
-        return project;
-    }
-
-    public void setProject(Project project) {
-        this.project = project;
+    public void deleteComment(Long id) {
+        int length = comments.size();
+        for (int i = 0; i < length; i++) {
+            if (comments.get(i).getId() == id) {
+                comments.remove(i);
+            }
+        }
     }
 }
