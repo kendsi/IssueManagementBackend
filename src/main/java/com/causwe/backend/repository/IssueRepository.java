@@ -25,18 +25,22 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
     @Query(value = "INSERT INTO issue_embeddings (issue_id, issue_embedding) VALUES (:issueId, (azure_openai.create_embeddings('text-embedding-3-small', :issueTitle)))", nativeQuery = true)
     void embedIssueTitle(@Param("issueId") Long issueId, @Param("issueTitle") String issueTitle);
 
-    // IssueRepository.java
-// IssueRepository.java
-    @Query(value = "SELECT fixer_id " +
-            "FROM (" +
-            "    SELECT i.fixer_id, e.issue_embedding " +
+    @Query(value = "WITH ranked_fixers AS (" +
+            "    SELECT i.fixer_id, " +
+            "           e.issue_embedding <=> (SELECT e2.issue_embedding FROM issue_embeddings e2 WHERE e2.issue_id = :issueId) AS similarity, " +
+            "           ROW_NUMBER() OVER (PARTITION BY i.fixer_id ORDER BY e.issue_embedding <=> (SELECT e2.issue_embedding FROM issue_embeddings e2 WHERE e2.issue_id = :issueId)) AS row_num " +
             "    FROM issue_embeddings e " +
             "    INNER JOIN issues i ON i.id = e.issue_id " +
             "    WHERE i.project_id = :projectId AND (i.status = 'RESOLVED' OR i.status = 'CLOSED') " +
-            "    ORDER BY e.issue_embedding <=> (SELECT e2.issue_embedding FROM issue_embeddings e2 WHERE e2.issue_id = :issueId) " +
-            "    LIMIT 3" +
-            ") subquery " +
-            "GROUP BY fixer_id, issue_embedding " +
+            "), " +
+            "unique_fixers AS (" +
+            "    SELECT fixer_id, similarity " +
+            "    FROM ranked_fixers " +
+            "    WHERE row_num = 1 " +
+            ") " +
+            "SELECT fixer_id " +
+            "FROM unique_fixers " +
+            "ORDER BY similarity " +
             "LIMIT 3", nativeQuery = true)
     List<Long> findRecommendedAssigneesByProjectId(@Param("projectId") Long projectId, @Param("issueId") Long issueId);
 

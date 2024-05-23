@@ -41,7 +41,10 @@ public class UserController {
         if (responseBody != null) {
             Cookie cookie = new Cookie("memberId", responseBody.get("memberId").toString());
             cookie.setPath("/");
-            response.addCookie(cookie);
+            cookie.setHttpOnly(true);
+            cookie.setSecure(true);
+            String cookieHeader = String.format("%s=%s; Path=%s; SameSite=None; Secure", cookie.getName(), cookie.getValue(), cookie.getPath());
+            response.addHeader("Set-Cookie", cookieHeader);
             return new ResponseEntity<>(responseBody, HttpStatus.OK);
         } else {
             return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
