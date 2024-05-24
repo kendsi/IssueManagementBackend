@@ -44,9 +44,8 @@ public class IssueService {
     @PersistenceContext
     private EntityManager entityManager;
 
-    public List<Issue> getAllIssues(Long projectId) {
-        Project project = projectService.getProjectById(projectId);
-        return issueRepository.findByProjectOrderByIdDesc(project);
+    public List<Issue> getAllIssues(Long projectId, Long memberId) {
+        return issueRepository.IssuesByProjectAndUser(projectId, memberId);
     }
 
     public Issue getIssueById(Long id) {
@@ -138,7 +137,7 @@ public class IssueService {
         }
     }
 
-    public List<Issue> searchIssues(Long projectId, Issue issue) {
+    public List<Issue> searchIssues(Long projectId, Issue issue, Long memberId) {
         Project project = projectService.getProjectById(projectId);
         User assignee = issue.getAssignee();
         User reporter = issue.getReporter();
@@ -151,7 +150,7 @@ public class IssueService {
         } else if (status != null) {
             return issueRepository.findByProjectAndStatusOrderByIdDesc(project, status);
         } else {
-            return issueRepository.findByProjectOrderByIdDesc(project);
+            return issueRepository.IssuesByProjectAndUser(projectId, memberId);
         }
     }
 
