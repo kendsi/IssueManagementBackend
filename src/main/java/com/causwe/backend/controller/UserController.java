@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @RestController
@@ -29,13 +30,17 @@ public class UserController {
     private ModelMapper modelMapper;
 
     @PostMapping("/signup")
-    public ResponseEntity<UserDTO> createUser(@RequestBody UserDTO userDTO, @CookieValue(value = "memberId", required = false) Long memberId) {
+    public ResponseEntity<UserDTO> createUser(@RequestBody UserDTO userData, @CookieValue(value = "memberId", required = false) Long memberId) {
+        if (Objects.equals(userData.getUsername(), "") || Objects.equals(userData.getPassword(), "")) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+
         User currentUser = userService.getUserById(memberId);
         if (currentUser == null || currentUser.getRole() != User.Role.ADMIN) {
             throw new UnauthorizedException("Only admins can create users.");
         }
 
-        User newUser = userService.createUser(modelMapper.map(userDTO, User.class));
+        User newUser = userService.createUser(modelMapper.map(userData, User.class));
         if (newUser == null) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
@@ -47,8 +52,8 @@ public class UserController {
 
     //TODO login responseBody는 Map<memberID.toString(), User>의 형태인데 DTO로 변환이 필요한지 결정
     @PostMapping("/login")
-    public ResponseEntity<Map<String, Object>> login(@RequestBody UserDTO userDTO, HttpServletResponse response) {
-        Map<String, Object> responseBody = userService.login(modelMapper.map(userDTO, User.class));
+    public ResponseEntity<Map<String, Object>> login(@RequestBody UserDTO userData, HttpServletResponse response) {
+        Map<String, Object> responseBody = userService.login(modelMapper.map(userData, User.class));
         if (responseBody != null) {
             Cookie cookie = new Cookie("memberId", responseBody.get("memberId").toString());
             cookie.setPath("/");

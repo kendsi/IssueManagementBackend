@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @RestController
@@ -24,8 +25,12 @@ public class ProjectController {
     private ModelMapper modelMapper;
 
     @PostMapping("")
-    public ResponseEntity<ProjectDTO> createProject(@RequestBody ProjectDTO projectDTO, @CookieValue(value = "memberId", required = false) Long memberId) {
-        Project newProject = projectService.createProject(modelMapper.map(projectDTO, Project.class), memberId);
+    public ResponseEntity<ProjectDTO> createProject(@RequestBody ProjectDTO projectData, @CookieValue(value = "memberId", required = false) Long memberId) {
+        if (Objects.equals(projectData.getName(), "")) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+
+        Project newProject = projectService.createProject(modelMapper.map(projectData, Project.class), memberId);
         ProjectDTO newProjectDTO = modelMapper.map(newProject, ProjectDTO.class);
 
         return new ResponseEntity<>(newProjectDTO, HttpStatus.CREATED);

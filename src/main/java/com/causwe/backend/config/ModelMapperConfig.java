@@ -5,26 +5,25 @@ import com.causwe.backend.dto.IssueDTO;
 import com.causwe.backend.model.Comment;
 import com.causwe.backend.model.Issue;
 import com.causwe.backend.model.User;
-//import com.causwe.backend.service.UserService;
+import com.causwe.backend.service.UserService;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.convention.MatchingStrategies;
 import org.modelmapper.Converter;
 import org.modelmapper.spi.MappingContext;
-//import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class ModelMapperConfig {
 
-    //@Autowired
-    //private UserService userService;
+    @Autowired
+    private UserService userService;
 
     @Bean
     public ModelMapper modelMapper() {
         ModelMapper modelMapper = new ModelMapper();
         modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
-        /*
         Converter<String, User> usernameToUserConverter = new Converter<String, User>() {
             @Override
             public User convert(MappingContext<String, User> context) {
@@ -36,7 +35,6 @@ public class ModelMapperConfig {
                 .addMappings(mapper -> mapper.using(usernameToUserConverter).map(IssueDTO::getReporterUsername, Issue::setReporter))
                 .addMappings(mapper -> mapper.using(usernameToUserConverter).map(IssueDTO::getFixerUsername, Issue::setFixer))
                 .addMappings(mapper -> mapper.using(usernameToUserConverter).map(IssueDTO::getAssigneeUsername, Issue::setAssignee));
-        */
 
         Converter<User, String> userToUsernameConverter = new Converter<User, String>() {
             @Override
