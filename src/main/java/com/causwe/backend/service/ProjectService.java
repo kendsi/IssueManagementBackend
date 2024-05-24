@@ -36,4 +36,22 @@ public class ProjectService {
         Optional<Project> project = projectRepository.findById(id);
         return project.orElseThrow(() -> new ProjectNotFoundException(id));
     }
+
+    // TODO 권한에 따라 삭제
+    public boolean deleteProject(Long id, Long memberId) {
+        User currentUser = userService.getUserById(memberId);
+        if (currentUser == null) {
+            throw new UnauthorizedException("User not logged in");
+        }
+
+        Optional<Project> project = projectRepository.findById(id);
+
+        if (project.isPresent()) {
+            projectRepository.deleteById(id);
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
 }

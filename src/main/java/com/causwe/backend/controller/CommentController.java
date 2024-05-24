@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 public class CommentController {
 
     @Autowired
-    private CommentService CommentService;
+    private CommentService commentService;
 
     @Autowired
     private ModelMapper modelMapper;
@@ -38,7 +38,7 @@ public class CommentController {
     @PostMapping("")
     public ResponseEntity<CommentDTO> addComment(@PathVariable Long issueId, @RequestBody CommentDTO commentData, @CookieValue(value = "memberId", required = false) Long memberId) {
 
-        Comment comment = CommentService.addComment(issueId, modelMapper.map(commentData, Comment.class), memberId);
+        Comment comment = commentService.addComment(issueId, modelMapper.map(commentData, Comment.class), memberId);
         
         if (comment != null) {
             CommentDTO commentDTO = modelMapper.map(comment, CommentDTO.class);
@@ -50,7 +50,7 @@ public class CommentController {
 
     @DeleteMapping("{id}")
     public ResponseEntity<Void> deleteComment(@PathVariable Long id, @CookieValue(value = "memberId", required = false) Long memberId) {
-        boolean isDeleted = CommentService.deleteComment(id, memberId);
+        boolean isDeleted = commentService.deleteComment(id, memberId);
         if (isDeleted) {
             return new ResponseEntity<>(HttpStatus.NO_CONTENT);
         } else {

@@ -53,4 +53,14 @@ public class ProjectController {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
+
+    @DeleteMapping("{id}")
+    public ResponseEntity<Void> deleteProject(@PathVariable Long id, @CookieValue(value = "memberId", required = false) Long memberId) {
+        boolean isDeleted = projectService.deleteProject(id, memberId);
+        if (isDeleted) {
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+        } else {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
 }
