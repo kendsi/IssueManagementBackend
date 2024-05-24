@@ -70,7 +70,7 @@ public class CommentController {
         }
     }
 
-    @DeleteMapping("{id}")
+    @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteComment(@PathVariable Long id, @CookieValue(value = "memberId", required = false) Long memberId) {
         boolean isDeleted = commentService.deleteComment(id, memberId);
         if (isDeleted) {
