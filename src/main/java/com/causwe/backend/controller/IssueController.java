@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @RestController
@@ -52,6 +53,10 @@ public class IssueController {
 
     @PostMapping("")
     public ResponseEntity<IssueDTO> createIssue(@PathVariable Long projectId, @RequestBody IssueDTO issueData, @CookieValue(value = "memberId", required = false) Long memberId) {
+        if (Objects.equals(issueData.getTitle(), "")) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+
         Issue newIssue = issueService.createIssue(projectId, modelMapper.map(issueData, Issue.class), memberId);
         IssueDTO newIssueDTO = modelMapper.map(newIssue, IssueDTO.class);
 
@@ -60,6 +65,10 @@ public class IssueController {
 
     @PutMapping("/{id}")
     public ResponseEntity<IssueDTO> updateIssue(@PathVariable Long id, @RequestBody IssueDTO updatedIssue, @CookieValue(value = "memberId", required = false) Long memberId) {
+        if (Objects.equals(updatedIssue.getTitle(), "")) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
+
         Issue updated = issueService.updateIssue(id, modelMapper.map(updatedIssue, Issue.class), memberId);
         IssueDTO updatedDTO = modelMapper.map(updated, IssueDTO.class);
 
@@ -71,11 +80,8 @@ public class IssueController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<IssueDTO>> searchIssues(@PathVariable Long projectId,
-                                                    @RequestParam(value = "assignee", required = false) Long assigneeId,
-                                                    @RequestParam(value = "reporter", required = false) Long reporterId,
-                                                    @RequestParam(value = "status", required = false) Issue.Status status) {
-        List<Issue> issues = issueService.searchIssues(projectId, assigneeId, reporterId, status);
+    public ResponseEntity<List<IssueDTO>> searchIssues(@PathVariable Long projectId, @RequestBody IssueDTO issueData) {
+        List<Issue> issues = issueService.searchIssues(projectId, modelMapper.map(issueData, Issue.class));
 
         List<IssueDTO> issueDTOs = issues
         .stream()

@@ -138,13 +138,15 @@ public class IssueService {
         }
     }
 
-    public List<Issue> searchIssues(Long projectId, Long assigneeId, Long reporterId, Issue.Status status) {
+    public List<Issue> searchIssues(Long projectId, Issue issue) {
         Project project = projectService.getProjectById(projectId);
-        if (assigneeId != null) {
-            User assignee = userService.getUserById(assigneeId);
+        User assignee = issue.getAssignee();
+        User reporter = issue.getReporter();
+        Issue.Status status = issue.getStatus();
+
+        if (assignee != null) {
             return issueRepository.findByProjectAndAssigneeOrderByIdDesc(project, assignee);
-        } else if (reporterId != null) {
-            User reporter = userService.getUserById(reporterId);
+        } else if (reporter != null) {
             return issueRepository.findByProjectAndReporterOrderByIdDesc(project, reporter);
         } else if (status != null) {
             return issueRepository.findByProjectAndStatusOrderByIdDesc(project, status);

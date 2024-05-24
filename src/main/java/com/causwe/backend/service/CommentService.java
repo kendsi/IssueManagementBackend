@@ -64,4 +64,23 @@ public class CommentService {
             return false;
         }
     }
+
+    public Comment updateComment(Long id, Comment commentData, Long memberId) {
+        User currentUser = userService.getUserById(memberId);
+        if (currentUser == null) {
+            throw new UnauthorizedException("User not logged in");
+        }
+
+        Optional<Comment> existingComment = commentRepository.findById(id);
+
+        if (existingComment.isPresent()){
+            Comment comment = existingComment.get();
+            comment.setContent(commentData.getContent());
+
+            return commentRepository.save(comment);
+        }
+        else {
+            return null;
+        }
+    }
 }
