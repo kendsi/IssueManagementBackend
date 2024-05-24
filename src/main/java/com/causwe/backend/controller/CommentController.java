@@ -25,7 +25,7 @@ public class CommentController {
 
     @GetMapping("")
     public ResponseEntity<List<CommentDTO>> getAllComment(@PathVariable Long issueId) {
-        List<Comment> comments = CommentService.getAllComments(issueId);
+        List<Comment> comments = commentService.getAllComments(issueId);
 
         List<CommentDTO> commentDTOs = comments
                 .stream()
