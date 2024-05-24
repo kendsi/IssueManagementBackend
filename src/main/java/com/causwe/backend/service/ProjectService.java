@@ -29,7 +29,7 @@ public class ProjectService {
     }
 
     public List<Project> getAllProjects() {
-        return projectRepository.findAll();
+        return projectRepository.findAllByOrderByIdAsc();
     }
 
     public Project getProjectById(Long id) {

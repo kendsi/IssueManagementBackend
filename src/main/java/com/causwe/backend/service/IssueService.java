@@ -46,7 +46,7 @@ public class IssueService {
 
     public List<Issue> getAllIssues(Long projectId) {
         Project project = projectService.getProjectById(projectId);
-        return issueRepository.findByProject(project);
+        return issueRepository.findByProjectOrderByIdDesc(project);
     }
 
     public Issue getIssueById(Long id) {
@@ -142,14 +142,14 @@ public class IssueService {
         Project project = projectService.getProjectById(projectId);
         if (assigneeId != null) {
             User assignee = userService.getUserById(assigneeId);
-            return issueRepository.findByProjectAndAssignee(project, assignee);
+            return issueRepository.findByProjectAndAssigneeOrderByIdDesc(project, assignee);
         } else if (reporterId != null) {
             User reporter = userService.getUserById(reporterId);
-            return issueRepository.findByProjectAndReporter(project, reporter);
+            return issueRepository.findByProjectAndReporterOrderByIdDesc(project, reporter);
         } else if (status != null) {
-            return issueRepository.findByProjectAndStatus(project, status);
+            return issueRepository.findByProjectAndStatusOrderByIdDesc(project, status);
         } else {
-            return issueRepository.findByProject(project);
+            return issueRepository.findByProjectOrderByIdDesc(project);
         }
     }
 

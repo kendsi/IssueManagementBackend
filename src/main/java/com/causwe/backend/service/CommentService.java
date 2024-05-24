@@ -27,7 +27,7 @@ public class CommentService {
 
     public List<Comment> getAllComments(Long issueId) {
         Issue issue = issueService.getIssueById(issueId);
-        return commentRepository.findByIssue(issue);
+        return commentRepository.findByIssueOrderByIdAsc(issue);
     }
 
     public Comment addComment(Long issueId, Comment commentData, Long memberId) {
