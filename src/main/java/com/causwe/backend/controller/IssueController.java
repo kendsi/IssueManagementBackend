@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -82,6 +83,22 @@ public class IssueController {
         .collect(Collectors.toList());
 
         return new ResponseEntity<>(issueDTOs, HttpStatus.OK);
+    }
+
+    @GetMapping("/searchbynl")
+    public ResponseEntity<List<IssueDTO>> searchIssuesbyNL(@PathVariable Long projectId,
+                                                           @RequestParam(value = "userMessage") String userMessage,
+                                                           @CookieValue(value = "memberId", required = false) Long memberId) {
+        try {
+            List<Issue> issues = issueService.searchIssuesByNL(projectId, userMessage, memberId);
+            List<IssueDTO> issueDTOs = issues.stream()
+                    .map(issue -> modelMapper.map(issue, IssueDTO.class))
+                    .collect(Collectors.toList());
+            return new ResponseEntity<>(issueDTOs, HttpStatus.OK);
+        } catch (IOException e) {
+            // 예외 처리 로직 추가
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
     @GetMapping("/{id}/recommendedAssignees")

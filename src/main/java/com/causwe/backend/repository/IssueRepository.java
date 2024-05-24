@@ -13,10 +13,10 @@ import java.util.List;
 
 
 public interface IssueRepository extends JpaRepository<Issue, Long> {
-    List<Issue> findByProject(Project project);
-    List<Issue> findByProjectAndAssignee(Project project, User assignee);
-    List<Issue> findByProjectAndReporter(Project project, User reporter);
-    List<Issue> findByProjectAndStatus(Project project, Issue.Status status);
+    List<Issue> findByProjectOrderByIdDesc(Project project);
+    List<Issue> findByProjectAndAssigneeOrderByIdDesc(Project project, User assignee);
+    List<Issue> findByProjectAndReporterOrderByIdDesc(Project project, User reporter);
+    List<Issue> findByProjectAndStatusOrderByIdDesc(Project project, Issue.Status status);
 
     @Modifying
     @Transactional
