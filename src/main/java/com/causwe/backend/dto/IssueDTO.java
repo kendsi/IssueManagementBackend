@@ -1,7 +1,6 @@
 package com.causwe.backend.dto;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -14,13 +13,11 @@ public class IssueDTO {
     private String title;
     private String description;
     private LocalDateTime reportedDate;
-    private Long reporterId;
-    private Long fixerId;
-    private Long assigneeId;
+    private String reporterUsername;
+    private String fixerUsername;
+    private String assigneeUsername;
     private Priority priority;
     private Status status;
-    private List<Long> commentIds;
-    private Long projectId;
 
     public enum Priority {
         BLOCKER, CRITICAL, MAJOR, MINOR, TRIVIAL

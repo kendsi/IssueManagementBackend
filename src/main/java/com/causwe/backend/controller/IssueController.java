@@ -22,6 +22,7 @@ public class IssueController {
     @Autowired
     private IssueService issueService;
 
+    @Autowired
     private ModelMapper modelMapper;
 
     @GetMapping("")

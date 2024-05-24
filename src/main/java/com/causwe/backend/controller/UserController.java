@@ -20,6 +20,9 @@ public class UserController {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private ModelMapper modelMapper;
+  
     @PostMapping("/signup")
     public ResponseEntity<User> createUser(@RequestBody User user, @CookieValue(value = "memberId", required = false) Long memberId) {
         User currentUser = userService.getUserById(memberId);
