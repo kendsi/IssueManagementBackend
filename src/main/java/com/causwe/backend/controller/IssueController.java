@@ -7,6 +7,7 @@ import com.causwe.backend.exceptions.ProjectNotFoundException;
 import com.causwe.backend.exceptions.UnauthorizedException;
 import com.causwe.backend.model.Issue;
 import com.causwe.backend.model.User;
+import com.causwe.backend.security.JwtTokenProvider;
 import com.causwe.backend.service.IssueService;
 
 import org.modelmapper.ModelMapper;
@@ -30,9 +31,13 @@ public class IssueController {
     @Autowired
     private ModelMapper modelMapper;
 
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
+
     @GetMapping("")
-    public ResponseEntity<List<IssueDTO>> getAllIssues(@PathVariable Long projectId, @CookieValue(value = "memberId", required = false) Long memberId) {
+    public ResponseEntity<List<IssueDTO>> getAllIssues(@PathVariable Long projectId, @CookieValue(name = "jwt", required = false) String token) {
         try {
+            Long memberId = jwtTokenProvider.getUserIdFromToken(token);
             List<Issue> issues = issueService.getAllIssues(projectId, memberId);
             List<IssueDTO> issueDTOs = issues
                     .stream()
@@ -56,12 +61,13 @@ public class IssueController {
     }
 
     @PostMapping("")
-    public ResponseEntity<IssueDTO> createIssue(@PathVariable Long projectId, @RequestBody IssueDTO issueData, @CookieValue(value = "memberId", required = false) Long memberId) {
+    public ResponseEntity<IssueDTO> createIssue(@PathVariable Long projectId, @RequestBody IssueDTO issueData, @CookieValue(name = "jwt", required = false) String token) {
         if (Objects.equals(issueData.getTitle(), "")) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
 
         try {
+            Long memberId = jwtTokenProvider.getUserIdFromToken(token);
             Issue newIssue = issueService.createIssue(projectId, modelMapper.map(issueData, Issue.class), memberId);
             IssueDTO newIssueDTO = modelMapper.map(newIssue, IssueDTO.class);
             return new ResponseEntity<>(newIssueDTO, HttpStatus.CREATED);
@@ -73,12 +79,13 @@ public class IssueController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<IssueDTO> updateIssue(@PathVariable Long id, @RequestBody IssueDTO updatedIssue, @CookieValue(value = "memberId", required = false) Long memberId) {
+    public ResponseEntity<IssueDTO> updateIssue(@PathVariable Long id, @RequestBody IssueDTO updatedIssue, @CookieValue(name = "jwt", required = false) String token) {
         if (Objects.equals(updatedIssue.getTitle(), "")) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
 
         try {
+            Long memberId = jwtTokenProvider.getUserIdFromToken(token);
             Issue updated = issueService.updateIssue(id, modelMapper.map(updatedIssue, Issue.class), memberId);
             IssueDTO updatedDTO = modelMapper.map(updated, IssueDTO.class);
             return new ResponseEntity<>(updatedDTO, HttpStatus.OK);
@@ -90,8 +97,9 @@ public class IssueController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<IssueDTO>> searchIssues(@PathVariable Long projectId, @RequestBody IssueDTO issueData, @CookieValue(value = "memberId", required = false) Long memberId) {
+    public ResponseEntity<List<IssueDTO>> searchIssues(@PathVariable Long projectId, @RequestBody IssueDTO issueData, @CookieValue(name = "jwt", required = false) String token) {
         try {
+            Long memberId = jwtTokenProvider.getUserIdFromToken(token);
             List<Issue> issues = issueService.searchIssues(projectId, modelMapper.map(issueData, Issue.class), memberId);
             List<IssueDTO> issueDTOs = issues
                     .stream()
@@ -106,8 +114,9 @@ public class IssueController {
     @GetMapping("/searchbynl")
     public ResponseEntity<List<IssueDTO>> searchIssuesbyNL(@PathVariable Long projectId,
                                                            @RequestParam(value = "userMessage") String userMessage,
-                                                           @CookieValue(value = "memberId", required = false) Long memberId) {
+                                                           @CookieValue(name = "jwt", required = false) String token) {
         try {
+            Long memberId = jwtTokenProvider.getUserIdFromToken(token);
             List<Issue> issues = issueService.searchIssuesByNL(projectId, userMessage, memberId);
             List<IssueDTO> issueDTOs = issues.stream()
                     .map(issue -> modelMapper.map(issue, IssueDTO.class))

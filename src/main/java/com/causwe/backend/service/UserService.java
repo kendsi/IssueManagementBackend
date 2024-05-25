@@ -9,6 +9,8 @@ public interface UserService {
     User getUserById(Long userId);
     User getUserByUsername(String username);
     User createUser(User user);
-    Map<String, Object> login(User user);
+    User login(User user);
     List<User> getAllDevs();
+    //List<User> getAllUsers();
+    //void deleteUser(Long userId);
 }

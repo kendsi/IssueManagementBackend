@@ -2,6 +2,7 @@ package com.causwe.backend.config;
 
 import com.causwe.backend.dto.CommentDTO;
 import com.causwe.backend.dto.IssueDTO;
+import com.causwe.backend.dto.UserDTO;
 import com.causwe.backend.model.Comment;
 import com.causwe.backend.model.Issue;
 import com.causwe.backend.model.User;
@@ -23,7 +24,11 @@ public class ModelMapperConfig {
     @Bean
     public ModelMapper modelMapper() {
         ModelMapper modelMapper = new ModelMapper();
+
         modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
+
+        modelMapper.typeMap(User.class, UserDTO.class).addMappings(mapper -> mapper.skip(UserDTO::setPassword));
+
         Converter<String, User> usernameToUserConverter = new Converter<String, User>() {
             @Override
             public User convert(MappingContext<String, User> context) {

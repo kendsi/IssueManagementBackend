@@ -4,6 +4,7 @@ import com.causwe.backend.dto.ProjectDTO;
 import com.causwe.backend.exceptions.ProjectNotFoundException;
 import com.causwe.backend.exceptions.UnauthorizedException;
 import com.causwe.backend.model.Project;
+import com.causwe.backend.security.JwtTokenProvider;
 import com.causwe.backend.service.ProjectService;
 
 import org.modelmapper.ModelMapper;
@@ -26,13 +27,17 @@ public class ProjectController {
     @Autowired
     private ModelMapper modelMapper;
 
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
+
     @PostMapping("")
-    public ResponseEntity<ProjectDTO> createProject(@RequestBody ProjectDTO projectData, @CookieValue(value = "memberId", required = false) Long memberId) {
+    public ResponseEntity<ProjectDTO> createProject(@RequestBody ProjectDTO projectData, @CookieValue(name = "jwt", required = false) String token) {
         if (Objects.equals(projectData.getName(), "")) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
 
         try {
+            Long memberId = jwtTokenProvider.getUserIdFromToken(token);
             Project newProject = projectService.createProject(modelMapper.map(projectData, Project.class), memberId);
             ProjectDTO newProjectDTO = modelMapper.map(newProject, ProjectDTO.class);
             return new ResponseEntity<>(newProjectDTO, HttpStatus.CREATED);
@@ -65,8 +70,9 @@ public class ProjectController {
     }
 
     @DeleteMapping("{id}")
-    public ResponseEntity<Void> deleteProject(@PathVariable Long id, @CookieValue(value = "memberId", required = false) Long memberId) {
+    public ResponseEntity<Void> deleteProject(@PathVariable Long id, @CookieValue(name = "jwt", required = false) String token) {
         try {
+            Long memberId = jwtTokenProvider.getUserIdFromToken(token);
             projectService.deleteProject(id, memberId);
             return new ResponseEntity<>(HttpStatus.NO_CONTENT);
         } catch (ProjectNotFoundException e) {
