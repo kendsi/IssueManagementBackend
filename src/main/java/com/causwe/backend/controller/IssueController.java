@@ -28,8 +28,8 @@ public class IssueController {
     private ModelMapper modelMapper;
 
     @GetMapping("")
-    public ResponseEntity<List<IssueDTO>> getAllIssues(@PathVariable Long projectId) {
-        List<Issue> issues = issueService.getAllIssues(projectId);
+    public ResponseEntity<List<IssueDTO>> getAllIssues(@PathVariable Long projectId, @CookieValue(value = "memberId", required = false) Long memberId) {
+        List<Issue> issues = issueService.getAllIssues(projectId, memberId);
         
         List<IssueDTO> issueDTOs = issues
         .stream()
@@ -80,8 +80,8 @@ public class IssueController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<IssueDTO>> searchIssues(@PathVariable Long projectId, @RequestBody IssueDTO issueData) {
-        List<Issue> issues = issueService.searchIssues(projectId, modelMapper.map(issueData, Issue.class));
+    public ResponseEntity<List<IssueDTO>> searchIssues(@PathVariable Long projectId, @RequestBody IssueDTO issueData, @CookieValue(value = "memberId", required = false) Long memberId) {
+        List<Issue> issues = issueService.searchIssues(projectId, modelMapper.map(issueData, Issue.class), memberId);
 
         List<IssueDTO> issueDTOs = issues
         .stream()

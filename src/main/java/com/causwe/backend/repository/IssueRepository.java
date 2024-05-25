@@ -13,7 +13,13 @@ import java.util.List;
 
 
 public interface IssueRepository extends JpaRepository<Issue, Long> {
-    List<Issue> findByProjectOrderByIdDesc(Project project);
+    @Query(value = "SELECT * FROM issues i " +
+            "WHERE i.project_id = :projectId " +
+            "ORDER BY CASE " +
+            "  WHEN (SELECT role FROM users WHERE id = :memberId) = 'DEV' AND i.assignee_id = :memberId THEN 0 " +
+            "  ELSE 1 " +
+            "END, i.id DESC", nativeQuery = true)
+    List<Issue> IssuesByProjectAndUser(@Param("projectId") Long projectId, @Param("memberId") Long memberId);
     List<Issue> findByProjectAndAssigneeOrderByIdDesc(Project project, User assignee);
     List<Issue> findByProjectAndReporterOrderByIdDesc(Project project, User reporter);
     List<Issue> findByProjectAndStatusOrderByIdDesc(Project project, Issue.Status status);
