@@ -1,9 +1,10 @@
 package com.causwe.backend.controller;
 
 import com.causwe.backend.dto.CommentDTO;
-import com.causwe.backend.dto.IssueDTO;
+import com.causwe.backend.exceptions.CommentNotFoundException;
+import com.causwe.backend.exceptions.IssueNotFoundException;
+import com.causwe.backend.exceptions.UnauthorizedException;
 import com.causwe.backend.model.Comment;
-import com.causwe.backend.model.Issue;
 import com.causwe.backend.service.CommentService;
 
 import org.modelmapper.ModelMapper;
@@ -43,40 +44,44 @@ public class CommentController {
         if (Objects.equals(commentData.getContent(), "")) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
-        
-        Comment comment = commentService.addComment(issueId, modelMapper.map(commentData, Comment.class), memberId);
-        
-        if (comment != null) {
+
+        try {
+            Comment comment = commentService.addComment(issueId, modelMapper.map(commentData, Comment.class), memberId);
             CommentDTO commentDTO = modelMapper.map(comment, CommentDTO.class);
             return new ResponseEntity<>(commentDTO, HttpStatus.CREATED);
-        } else {
+        } catch (IssueNotFoundException e) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } catch (UnauthorizedException e) {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<IssueDTO> updateComment(@PathVariable Long id, @RequestBody CommentDTO updatedComment, @CookieValue(value = "memberId", required = false) Long memberId) {
+    public ResponseEntity<CommentDTO> updateComment(@PathVariable Long id, @RequestBody CommentDTO updatedComment, @CookieValue(value = "memberId", required = false) Long memberId) {
         if (Objects.equals(updatedComment.getContent(), "")) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
 
-        Comment updated = commentService.updateComment(id, modelMapper.map(updatedComment, Comment.class), memberId);
-        IssueDTO updatedDTO = modelMapper.map(updated, IssueDTO.class);
-
-        if (updated != null) {
+        try {
+            Comment updated = commentService.updateComment(id, modelMapper.map(updatedComment, Comment.class), memberId);
+            CommentDTO updatedDTO = modelMapper.map(updated, CommentDTO.class);
             return new ResponseEntity<>(updatedDTO, HttpStatus.OK);
-        } else {
+        } catch (CommentNotFoundException e) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } catch (UnauthorizedException e) {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteComment(@PathVariable Long id, @CookieValue(value = "memberId", required = false) Long memberId) {
-        boolean isDeleted = commentService.deleteComment(id, memberId);
-        if (isDeleted) {
+        try {
+            commentService.deleteComment(id, memberId);
             return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-        } else {
+        } catch (CommentNotFoundException e) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } catch (UnauthorizedException e) {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
     }
 }

@@ -1,6 +1,8 @@
 package com.causwe.backend.controller;
 
 import com.causwe.backend.dto.ProjectDTO;
+import com.causwe.backend.exceptions.ProjectNotFoundException;
+import com.causwe.backend.exceptions.UnauthorizedException;
 import com.causwe.backend.model.Project;
 import com.causwe.backend.service.ProjectService;
 
@@ -30,10 +32,13 @@ public class ProjectController {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
 
-        Project newProject = projectService.createProject(modelMapper.map(projectData, Project.class), memberId);
-        ProjectDTO newProjectDTO = modelMapper.map(newProject, ProjectDTO.class);
-
-        return new ResponseEntity<>(newProjectDTO, HttpStatus.CREATED);
+        try {
+            Project newProject = projectService.createProject(modelMapper.map(projectData, Project.class), memberId);
+            ProjectDTO newProjectDTO = modelMapper.map(newProject, ProjectDTO.class);
+            return new ResponseEntity<>(newProjectDTO, HttpStatus.CREATED);
+        } catch (UnauthorizedException e) {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        }
     }
 
     @GetMapping("")
@@ -50,22 +55,24 @@ public class ProjectController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ProjectDTO> getProjectById(@PathVariable Long id) {
-        Project project = projectService.getProjectById(id);
-        if (project != null) {
+        try {
+            Project project = projectService.getProjectById(id);
             ProjectDTO projectDTO = modelMapper.map(project, ProjectDTO.class);
             return new ResponseEntity<>(projectDTO, HttpStatus.OK);
-        } else {
+        } catch (ProjectNotFoundException e) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
 
     @DeleteMapping("{id}")
     public ResponseEntity<Void> deleteProject(@PathVariable Long id, @CookieValue(value = "memberId", required = false) Long memberId) {
-        boolean isDeleted = projectService.deleteProject(id, memberId);
-        if (isDeleted) {
+        try {
+            projectService.deleteProject(id, memberId);
             return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-        } else {
+        } catch (ProjectNotFoundException e) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } catch (UnauthorizedException e) {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
     }
 }

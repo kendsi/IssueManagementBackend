@@ -39,8 +39,7 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public Project getProjectById(Long id) {
-        Optional<Project> project = projectRepository.findById(id);
-        return project.orElseThrow(() -> new ProjectNotFoundException(id));
+        return projectRepository.findById(id).orElseThrow(() -> new ProjectNotFoundException(id));
     }
 
     @Override
@@ -50,19 +49,15 @@ public class ProjectServiceImpl implements ProjectService {
             throw new UnauthorizedException("User not logged in");
         }
 
-        Optional<Project> project = projectRepository.findById(id);
-
-        if (project.isPresent()) {
-            if(currentUser.getRole() == User.Role.ADMIN){
+        if (currentUser.getRole() == User.Role.ADMIN) {
+            if (projectRepository.existsById(id)) {
                 projectRepository.deleteById(id);
                 return true;
+            } else {
+                throw new ProjectNotFoundException(id);
             }
-            else {
-                return false;
-            }
-        }
-        else {
-            return false;
+        } else {
+            throw new UnauthorizedException("You are not authorized to delete this comment.");
         }
     }
 }

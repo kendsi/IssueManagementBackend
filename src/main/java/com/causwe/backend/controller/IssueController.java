@@ -2,6 +2,9 @@ package com.causwe.backend.controller;
 
 import com.causwe.backend.dto.IssueDTO;
 import com.causwe.backend.dto.UserDTO;
+import com.causwe.backend.exceptions.IssueNotFoundException;
+import com.causwe.backend.exceptions.ProjectNotFoundException;
+import com.causwe.backend.exceptions.UnauthorizedException;
 import com.causwe.backend.model.Issue;
 import com.causwe.backend.model.User;
 import com.causwe.backend.service.IssueService;
@@ -29,24 +32,25 @@ public class IssueController {
 
     @GetMapping("")
     public ResponseEntity<List<IssueDTO>> getAllIssues(@PathVariable Long projectId, @CookieValue(value = "memberId", required = false) Long memberId) {
-        List<Issue> issues = issueService.getAllIssues(projectId, memberId);
-        
-        List<IssueDTO> issueDTOs = issues
-        .stream()
-        .map(issue -> modelMapper.map(issue, IssueDTO.class))
-        .collect(Collectors.toList());
-
-        return new ResponseEntity<>(issueDTOs, HttpStatus.OK);
+        try {
+            List<Issue> issues = issueService.getAllIssues(projectId, memberId);
+            List<IssueDTO> issueDTOs = issues
+                    .stream()
+                    .map(issue -> modelMapper.map(issue, IssueDTO.class))
+                    .collect(Collectors.toList());
+            return new ResponseEntity<>(issueDTOs, HttpStatus.OK);
+        } catch (ProjectNotFoundException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<IssueDTO> getIssueById(@PathVariable Long id) {
-        Issue issue = issueService.getIssueById(id);
-
-        if (issue != null) {
+        try {
+            Issue issue = issueService.getIssueById(id);
             IssueDTO issueDTO = modelMapper.map(issue, IssueDTO.class);
             return new ResponseEntity<>(issueDTO, HttpStatus.OK);
-        } else {
+        } catch (IssueNotFoundException e) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
@@ -57,10 +61,15 @@ public class IssueController {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
 
-        Issue newIssue = issueService.createIssue(projectId, modelMapper.map(issueData, Issue.class), memberId);
-        IssueDTO newIssueDTO = modelMapper.map(newIssue, IssueDTO.class);
-
-        return new ResponseEntity<>(newIssueDTO, HttpStatus.CREATED);
+        try {
+            Issue newIssue = issueService.createIssue(projectId, modelMapper.map(issueData, Issue.class), memberId);
+            IssueDTO newIssueDTO = modelMapper.map(newIssue, IssueDTO.class);
+            return new ResponseEntity<>(newIssueDTO, HttpStatus.CREATED);
+        } catch (ProjectNotFoundException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } catch (UnauthorizedException e) {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        }
     }
 
     @PutMapping("/{id}")
@@ -69,26 +78,29 @@ public class IssueController {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
 
-        Issue updated = issueService.updateIssue(id, modelMapper.map(updatedIssue, Issue.class), memberId);
-        IssueDTO updatedDTO = modelMapper.map(updated, IssueDTO.class);
-
-        if (updated != null) {
+        try {
+            Issue updated = issueService.updateIssue(id, modelMapper.map(updatedIssue, Issue.class), memberId);
+            IssueDTO updatedDTO = modelMapper.map(updated, IssueDTO.class);
             return new ResponseEntity<>(updatedDTO, HttpStatus.OK);
-        } else {
+        } catch (IssueNotFoundException e) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } catch (UnauthorizedException e) {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
     }
 
     @GetMapping("/search")
     public ResponseEntity<List<IssueDTO>> searchIssues(@PathVariable Long projectId, @RequestBody IssueDTO issueData, @CookieValue(value = "memberId", required = false) Long memberId) {
-        List<Issue> issues = issueService.searchIssues(projectId, modelMapper.map(issueData, Issue.class), memberId);
-
-        List<IssueDTO> issueDTOs = issues
-        .stream()
-        .map(issue -> modelMapper.map(issue, IssueDTO.class))
-        .collect(Collectors.toList());
-
-        return new ResponseEntity<>(issueDTOs, HttpStatus.OK);
+        try {
+            List<Issue> issues = issueService.searchIssues(projectId, modelMapper.map(issueData, Issue.class), memberId);
+            List<IssueDTO> issueDTOs = issues
+                    .stream()
+                    .map(issue -> modelMapper.map(issue, IssueDTO.class))
+                    .collect(Collectors.toList());
+            return new ResponseEntity<>(issueDTOs, HttpStatus.OK);
+        } catch (ProjectNotFoundException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
     }
 
     @GetMapping("/searchbynl")
@@ -102,23 +114,22 @@ public class IssueController {
                     .collect(Collectors.toList());
             return new ResponseEntity<>(issueDTOs, HttpStatus.OK);
         } catch (IOException e) {
-            // 예외 처리 로직 추가
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        } catch (ProjectNotFoundException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
 
     @GetMapping("/{id}/recommendedAssignees")
     public ResponseEntity<List<UserDTO>> getRecommendedAssignees(@PathVariable Long projectId, @PathVariable Long id) {
-        List<User> recommendedAssignees = issueService.getRecommendedAssignees(projectId, id);
-        
-        if (recommendedAssignees != null) {
+        try {
+            List<User> recommendedAssignees = issueService.getRecommendedAssignees(projectId, id);
             List<UserDTO> userDTOs = recommendedAssignees
-            .stream()
-            .map(user -> modelMapper.map(user, UserDTO.class))
-            .collect(Collectors.toList());
-
+                    .stream()
+                    .map(user -> modelMapper.map(user, UserDTO.class))
+                    .collect(Collectors.toList());
             return new ResponseEntity<>(userDTOs, HttpStatus.OK);
-        } else {
+        } catch (IssueNotFoundException e) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }

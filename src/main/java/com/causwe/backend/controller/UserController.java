@@ -1,7 +1,7 @@
 package com.causwe.backend.controller;
 
 import com.causwe.backend.exceptions.UnauthorizedException;
-
+import com.causwe.backend.exceptions.UserNotFoundException;
 import com.causwe.backend.dto.UserDTO;
 import com.causwe.backend.model.User;
 import com.causwe.backend.service.UserService;
@@ -35,22 +35,22 @@ public class UserController {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
 
-        User currentUser = userService.getUserById(memberId);
-        if (currentUser == null || currentUser.getRole() != User.Role.ADMIN) {
-            throw new UnauthorizedException("Only admins can create users.");
+        try {
+            User currentUser = userService.getUserById(memberId);
+            if (currentUser == null || currentUser.getRole() != User.Role.ADMIN) {
+                throw new UnauthorizedException("Only admins can create users.");
+            }
+
+            User newUser = userService.createUser(modelMapper.map(userData, User.class));
+            UserDTO newUserDTO = modelMapper.map(newUser, UserDTO.class);
+            return new ResponseEntity<>(newUserDTO, HttpStatus.CREATED);
+        } catch (UserNotFoundException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } catch (UnauthorizedException e) {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
-
-        User newUser = userService.createUser(modelMapper.map(userData, User.class));
-        if (newUser == null) {
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
-        }
-
-        UserDTO newUserDTO = modelMapper.map(newUser, UserDTO.class);
-
-        return new ResponseEntity<>(newUserDTO, HttpStatus.CREATED);
     }
 
-    //TODO login responseBody는 Map<memberID.toString(), User>의 형태인데 DTO로 변환이 필요한지 결정
     @PostMapping("/login")
     public ResponseEntity<Map<String, Object>> login(@RequestBody UserDTO userData, HttpServletResponse response) {
         Map<String, Object> responseBody = userService.login(modelMapper.map(userData, User.class));
@@ -69,11 +69,13 @@ public class UserController {
 
     @GetMapping("")
     public ResponseEntity<UserDTO> getUserById(@CookieValue(value = "memberId", required = false) Long memberId) {
-        User user = userService.getUserById(memberId);
-
-        UserDTO UserDTO =  modelMapper.map(user, UserDTO.class);
-
-        return new ResponseEntity<>(UserDTO, HttpStatus.OK);
+        try {
+            User user = userService.getUserById(memberId);
+            UserDTO UserDTO =  modelMapper.map(user, UserDTO.class);
+            return new ResponseEntity<>(UserDTO, HttpStatus.OK);
+        } catch (UserNotFoundException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
     }
 
     @GetMapping("/devs")

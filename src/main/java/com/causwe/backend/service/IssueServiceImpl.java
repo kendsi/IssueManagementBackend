@@ -1,5 +1,6 @@
 package com.causwe.backend.service;
 
+import com.causwe.backend.exceptions.IssueNotFoundException;
 import com.causwe.backend.exceptions.UnauthorizedException;
 import com.causwe.backend.model.Issue;
 import com.causwe.backend.model.Project;
@@ -49,8 +50,8 @@ public class IssueServiceImpl implements IssueService {
 
     @Override
     public Issue getIssueById(Long id) {
-        Optional<Issue> issue = issueRepository.findById(id);
-        return issue.orElse(null);
+        return issueRepository.findById(id)
+                .orElseThrow(() -> new IssueNotFoundException(id));
     }
 
     @Override
@@ -78,11 +79,10 @@ public class IssueServiceImpl implements IssueService {
             throw new UnauthorizedException("User not logged in");
         }
 
-        Optional<Issue> existingIssue = issueRepository.findById(id);
+        Issue issue = issueRepository.findById(id)
+                .orElseThrow(() -> new IssueNotFoundException(id));
 
-        if (existingIssue.isPresent()) {
-            Issue issue = existingIssue.get();
-
+        if (issue != null) {
             // 사용자 역할 기반해서 필드 업데이트 권한 확인
             switch (currentUser.getRole()) {
                 case ADMIN:
@@ -209,10 +209,9 @@ public class IssueServiceImpl implements IssueService {
 
     @Override
     public List<User> getRecommendedAssignees(Long projectId, Long id) {
-        Optional<Issue> issue = issueRepository.findById(id);
-
-        if (issue.isPresent()) {
-            List<Long> assigneeIds = issueRepository.findRecommendedAssigneesByProjectId(projectId, id);
+        if (issueRepository.existsById(id)) {
+            List<Long> assigneeIds = issueRepository.findRecommendedAssigneesByProjectId(
+                    projectId, id);
             List<User> unorderedAssignees = new ArrayList<>();
 
             for (int i = 0; i < assigneeIds.size(); i++) {
@@ -227,7 +226,7 @@ public class IssueServiceImpl implements IssueService {
                             .orElse(null))
                     .collect(Collectors.toList());
         } else {
-            return null;
+            throw new IssueNotFoundException(id);
         }
     }
 }

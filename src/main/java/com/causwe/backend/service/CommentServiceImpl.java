@@ -1,5 +1,6 @@
 package com.causwe.backend.service;
 
+import com.causwe.backend.exceptions.CommentNotFoundException;
 import com.causwe.backend.exceptions.UnauthorizedException;
 import com.causwe.backend.model.Comment;
 import com.causwe.backend.model.Issue;
@@ -55,18 +56,14 @@ public class CommentServiceImpl implements CommentService {
             throw new UnauthorizedException("User not logged in");
         }
 
-        Optional<Comment> comment = commentRepository.findById(id);
+        Comment comment = commentRepository.findById(id)
+                .orElseThrow(() -> new CommentNotFoundException(id));
 
-        if (comment.isPresent()) {
-            if(currentUser.getRole() == User.Role.ADMIN|| comment.get().getUser().getId().equals(currentUser.getId())){
-                commentRepository.deleteById(id);
-                return true;
-            }else{
-                return false;
-            }
-        }
-        else {
-            return false;
+        if(currentUser.getRole() == User.Role.ADMIN|| comment.getUser().getId().equals(currentUser.getId())){
+            commentRepository.deleteById(id);
+            return true;
+        }else{
+            throw new UnauthorizedException("You are not authorized to delete this comment.");
         }
     }
 
@@ -77,19 +74,14 @@ public class CommentServiceImpl implements CommentService {
             throw new UnauthorizedException("User not logged in");
         }
 
-        Optional<Comment> existingComment = commentRepository.findById(id);
+        Comment comment = commentRepository.findById(id)
+                .orElseThrow(() -> new CommentNotFoundException(id));
 
-        if (existingComment.isPresent()){
-            if(existingComment.get().getUser().getId().equals(currentUser.getId())){
-                Comment comment = existingComment.get();
-                comment.setContent(commentData.getContent());
-                return commentRepository.save(comment);
-            }else{
-                throw new UnauthorizedException("Only the author of the comment can update the comment");
-            }
+        if (!comment.getUser().getId().equals(currentUser.getId())) {
+            throw new UnauthorizedException("Only the author of the comment can update the comment.");
         }
-        else {
-            return null;
-        }
+
+        comment.setContent(commentData.getContent());
+        return commentRepository.save(comment);
     }
 }
