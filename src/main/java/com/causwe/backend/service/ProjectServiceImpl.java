@@ -43,7 +43,6 @@ public class ProjectServiceImpl implements ProjectService {
         return project.orElseThrow(() -> new ProjectNotFoundException(id));
     }
 
-    // TODO 권한에 따라 삭제
     @Override
     public boolean deleteProject(Long id, Long memberId) {
         User currentUser = userService.getUserById(memberId);
@@ -54,8 +53,13 @@ public class ProjectServiceImpl implements ProjectService {
         Optional<Project> project = projectRepository.findById(id);
 
         if (project.isPresent()) {
-            projectRepository.deleteById(id);
-            return true;
+            if(currentUser.getRole() == User.Role.ADMIN){
+                projectRepository.deleteById(id);
+                return true;
+            }
+            else {
+                return false;
+            }
         }
         else {
             return false;

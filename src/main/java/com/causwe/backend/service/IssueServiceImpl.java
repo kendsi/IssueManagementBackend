@@ -119,15 +119,15 @@ public class IssueServiceImpl implements IssueService {
                     }
                     break;
                 case DEV:
-                    // Dev는 status to RESOLVED 그리고 set fixer를 할 수 있다.
-                    if (updatedIssue.getStatus() == Issue.Status.RESOLVED) {
+                    // Dev는 status to FIXED 그리고 set fixer를 할 수 있다.
+                    if (updatedIssue.getStatus() == Issue.Status.FIXED) {
                         issue.setStatus(updatedIssue.getStatus());
                         issue.setFixer(currentUser);
                     }
                     break;
                 case TESTER:
-                    // Tester는 status to REOPENED 할 수 있다.
-                    if (updatedIssue.getStatus() == Issue.Status.REOPENED) {
+                    // Tester는 status to RESOLVED 할 수 있다.
+                    if (updatedIssue.getStatus() == Issue.Status.RESOLVED && issue.getReporter().getId().equals(currentUser.getId())) {
                         issue.setStatus(updatedIssue.getStatus());
                     }
                     break;

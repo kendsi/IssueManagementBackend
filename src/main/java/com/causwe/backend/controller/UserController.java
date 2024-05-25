@@ -67,7 +67,16 @@ public class UserController {
         }
     }
 
-    @GetMapping
+    @GetMapping("")
+    public ResponseEntity<UserDTO> getUserById(@CookieValue(value = "memberId", required = false) Long memberId) {
+        User user = userService.getUserById(memberId);
+
+        UserDTO UserDTO =  modelMapper.map(user, UserDTO.class);
+
+        return new ResponseEntity<>(UserDTO, HttpStatus.OK);
+    }
+
+    @GetMapping("/devs")
     public ResponseEntity<List<UserDTO>> getAllDevs() {
         List<User> devUsers = userService.getAllDevs();
 

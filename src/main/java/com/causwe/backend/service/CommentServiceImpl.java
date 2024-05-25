@@ -28,7 +28,7 @@ public class CommentServiceImpl implements CommentService {
     @Override
     public List<Comment> getAllComments(Long issueId) {
         Issue issue = issueService.getIssueById(issueId);
-        return commentRepository.findByIssueOrderByIdAsc(issue);
+        return commentRepository.findByIssueOrderByCreatedAtAsc(issue);
     }
 
     @Override
@@ -48,7 +48,6 @@ public class CommentServiceImpl implements CommentService {
         }
     }
 
-    // TODO 권한에 따라 삭제
     @Override
     public boolean deleteComment(Long id, Long memberId) {
         User currentUser = userService.getUserById(memberId);
@@ -59,8 +58,12 @@ public class CommentServiceImpl implements CommentService {
         Optional<Comment> comment = commentRepository.findById(id);
 
         if (comment.isPresent()) {
-            commentRepository.deleteById(id);
-            return true;
+            if(currentUser.getRole() == User.Role.ADMIN|| comment.get().getUser().getId().equals(currentUser.getId())){
+                commentRepository.deleteById(id);
+                return true;
+            }else{
+                return false;
+            }
         }
         else {
             return false;
@@ -77,9 +80,13 @@ public class CommentServiceImpl implements CommentService {
         Optional<Comment> existingComment = commentRepository.findById(id);
 
         if (existingComment.isPresent()){
-            Comment comment = existingComment.get();
-            comment.setContent(commentData.getContent());
-            return commentRepository.save(comment);
+            if(existingComment.get().getUser().getId().equals(currentUser.getId())){
+                Comment comment = existingComment.get();
+                comment.setContent(commentData.getContent());
+                return commentRepository.save(comment);
+            }else{
+                throw new UnauthorizedException("Only the author of the comment can update the comment");
+            }
         }
         else {
             return null;
