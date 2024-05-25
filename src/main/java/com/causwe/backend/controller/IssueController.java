@@ -97,10 +97,13 @@ public class IssueController {
     }
 
     @GetMapping("/search")
-    public ResponseEntity<List<IssueDTO>> searchIssues(@PathVariable Long projectId, @RequestBody IssueDTO issueData, @CookieValue(name = "jwt", required = false) String token) {
+    public ResponseEntity<List<IssueDTO>> searchIssues(@PathVariable Long projectId,
+                                                       @RequestParam(value = "assigneeUsername", required = false) String assigneeUsername,
+                                                       @RequestParam(value = "reporterUsername", required = false) String reporterUsername,
+                                                       @RequestParam(value = "status", required = false) Issue.Status status, @CookieValue(name = "jwt", required = false) String token) {
         try {
             Long memberId = jwtTokenProvider.getUserIdFromToken(token);
-            List<Issue> issues = issueService.searchIssues(projectId, modelMapper.map(issueData, Issue.class), memberId);
+            List<Issue> issues = issueService.searchIssues(projectId, assigneeUsername, reporterUsername, status, memberId);
             List<IssueDTO> issueDTOs = issues
                     .stream()
                     .map(issue -> modelMapper.map(issue, IssueDTO.class))

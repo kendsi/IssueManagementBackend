@@ -140,15 +140,14 @@ public class IssueServiceImpl implements IssueService {
     }
 
     @Override
-    public List<Issue> searchIssues(Long projectId, Issue issue, Long memberId) {
+    public List<Issue> searchIssues(Long projectId, String assigneeUsername, String reporterUsername, Issue.Status status, Long memberId) {
         Project project = projectService.getProjectById(projectId);
-        User assignee = issue.getAssignee();
-        User reporter = issue.getReporter();
-        Issue.Status status = issue.getStatus();
 
-        if (assignee != null) {
+        if (assigneeUsername != null) {
+            User assignee = userService.getUserByUsername(assigneeUsername);
             return issueRepository.findByProjectAndAssigneeOrderByIdDesc(project, assignee);
-        } else if (reporter != null) {
+        } else if (reporterUsername != null) {
+            User reporter = userService.getUserByUsername(reporterUsername);
             return issueRepository.findByProjectAndReporterOrderByIdDesc(project, reporter);
         } else if (status != null) {
             return issueRepository.findByProjectAndStatusOrderByIdDesc(project, status);
