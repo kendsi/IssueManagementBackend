@@ -24,7 +24,7 @@ public class IssueDTO {
     }
 
     public enum Status {
-        NEW, ASSIGNED, RESOLVED, CLOSED, REOPENED
+        NEW, ASSIGNED, FIXED, RESOLVED, CLOSED, REOPENED
     }
 
     public IssueDTO() {}
