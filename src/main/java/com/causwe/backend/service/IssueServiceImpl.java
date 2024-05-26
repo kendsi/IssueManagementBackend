@@ -16,13 +16,14 @@ import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Query;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Service
@@ -67,7 +68,9 @@ public class IssueServiceImpl implements IssueService {
         issue.setProject(project);
         Issue newIssue = issueRepository.save(issue);
 
-        issueRepository.embedIssueTitle(newIssue.getId(), newIssue.getTitle());
+        CompletableFuture.runAsync(() ->
+                issueRepository.embedIssueTitle(newIssue.getId(), newIssue.getTitle() + newIssue.getDescription())
+        );
 
         return newIssue;
     }
