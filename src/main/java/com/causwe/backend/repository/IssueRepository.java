@@ -17,11 +17,13 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
             "WHERE i.project_id = :projectId " +
             "ORDER BY CASE " +
             "  WHEN (SELECT role FROM users WHERE id = :memberId) = 'PL' AND i.status = 'NEW' THEN 0 " +
+            "  WHEN (SELECT role FROM users WHERE id = :memberId) = 'PL' AND i.status = 'RESOLVED' THEN 1 " +
             "  WHEN (SELECT role FROM users WHERE id = :memberId) = 'DEV' AND i.assignee_id = :memberId THEN 0 " +
             "  WHEN (SELECT role FROM users WHERE id = :memberId) = 'TESTER' AND i.reporter_id = :memberId AND i.status = 'FIXED' THEN 0 " +
             "  WHEN (SELECT role FROM users WHERE id = :memberId) = 'TESTER' AND i.reporter_id = :memberId THEN 1 " +
             "  ELSE 2 " +
             "END, i.id DESC", nativeQuery = true)
+
     List<Issue> IssuesByProjectAndUser(@Param("projectId") Long projectId, @Param("memberId") Long memberId);
     List<Issue> findByProjectAndAssigneeOrderByIdDesc(Project project, User assignee);
     List<Issue> findByProjectAndReporterOrderByIdDesc(Project project, User reporter);
