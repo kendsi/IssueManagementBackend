@@ -85,6 +85,7 @@ public class IssueServiceImpl implements IssueService {
         Issue issue = issueRepository.findById(id)
                 .orElseThrow(() -> new IssueNotFoundException(id));
 
+        Issue originalIssueCopy = new Issue(issue);
         if (issue != null) {
             // 사용자 역할 기반해서 필드 업데이트 권한 확인
             switch (currentUser.getRole()) {
@@ -129,11 +130,24 @@ public class IssueServiceImpl implements IssueService {
                     }
                     break;
                 case TESTER:
-                    // Tester는 status to RESOLVED 할 수 있다.
+                    // Tester는 자신이 쓴 Issue의 Title, Description, Priority을 변경할 수 있고 status to RESOLVED 할 수 있다.
+                    if (updatedIssue.getTitle() != null && issue.getReporter().getId().equals(currentUser.getId())) {
+                        issue.setTitle(updatedIssue.getTitle());
+                    }
+                    if (updatedIssue.getDescription() != null && issue.getReporter().getId().equals(currentUser.getId())) {
+                        issue.setDescription(updatedIssue.getDescription());
+                    }
+                    if (updatedIssue.getPriority() != null && issue.getReporter().getId().equals(currentUser.getId())){
+                        issue.setPriority(updatedIssue.getPriority());
+                    }
                     if (updatedIssue.getStatus() == Issue.Status.RESOLVED && issue.getReporter().getId().equals(currentUser.getId())) {
                         issue.setStatus(updatedIssue.getStatus());
                     }
                     break;
+            }
+
+            if (originalIssueCopy.equals(issue)) {
+                throw new UnauthorizedException("Issue not changed");
             }
 
             return issueRepository.save(issue);

@@ -23,7 +23,6 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
             "  WHEN (SELECT role FROM users WHERE id = :memberId) = 'TESTER' AND i.reporter_id = :memberId THEN 1 " +
             "  ELSE 2 " +
             "END, i.id DESC", nativeQuery = true)
-
     List<Issue> IssuesByProjectAndUser(@Param("projectId") Long projectId, @Param("memberId") Long memberId);
     List<Issue> findByProjectAndAssigneeOrderByIdDesc(Project project, User assignee);
     List<Issue> findByProjectAndReporterOrderByIdDesc(Project project, User reporter);
