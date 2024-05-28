@@ -61,7 +61,9 @@ public class IssueServiceImpl implements IssueService {
         if (currentUser == null) {
             throw new UnauthorizedException("User not logged in");
         }
-
+        if (!(currentUser.getRole() == User.Role.ADMIN) && !(currentUser.getRole() == User.Role.TESTER)) {
+            throw new UnauthorizedException("User not authorized to create issue");
+        }
         Project project = projectService.getProjectById(projectId);
 
         Issue issue = new Issue(issueData.getTitle(), issueData.getDescription(), currentUser);

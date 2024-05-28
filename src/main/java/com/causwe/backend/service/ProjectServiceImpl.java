@@ -29,6 +29,9 @@ public class ProjectServiceImpl implements ProjectService {
         if (currentUser == null) {
             throw new UnauthorizedException("User not logged in");
         }
+        if (!(currentUser.getRole() == User.Role.ADMIN)) {
+            throw new UnauthorizedException("User not authorized to create a project.");
+        }
         return projectRepository.save(project);
     }
 
