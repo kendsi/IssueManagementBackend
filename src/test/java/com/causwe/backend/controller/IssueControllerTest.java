@@ -7,9 +7,8 @@ import com.causwe.backend.model.Issue;
 import com.causwe.backend.model.Project;
 import com.causwe.backend.model.User;
 import com.causwe.backend.service.IssueService;
-import com.causwe.backend.service.IssueServiceImpl;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.Cookie;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -31,8 +30,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -172,35 +169,78 @@ public class IssueControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
-    // @Test
-    // public void testUpdateIssue() throws Exception {
-    //     when(issueService.updateIssue(anyLong(), any(Issue.class), anyLong())).thenReturn(issue);
-    //     when(modelMapper.map(any(IssueDTO.class), any(Class.class))).thenReturn(issue);
-    //     when(modelMapper.map(any(Issue.class), any(Class.class))).thenReturn(issueDTO);
+    @Test
+    public void testUpdateIssue() throws Exception {
+        
+        issueDTO2.setAssigneeUsername("dev");
+        issueDTO2.setDescription("Updated Description");
+        issueDTO2.setStatus(IssueDTO.Status.ASSIGNED);
+        issueDTO2.setPriority(IssueDTO.Priority.MINOR);
 
-    //     mockMvc.perform(put("/api/projects/1/issues/1")
-    //                     .cookie(new jakarta.servlet.http.Cookie("memberId", "1"))
-    //                     .contentType(MediaType.APPLICATION_JSON)
-    //                     .content("{\"title\": \"Updated Issue\", \"description\": \"Updated Description\"}"))
-    //             .andExpect(status().isOk())
-    //             .andExpect(jsonPath("$.title").value(issueDTO.getTitle()));
-    // }
+        issue2.setAssignee(dev);
+        issue2.setDescription("Updated Description");
+        issue2.setStatus(Issue.Status.ASSIGNED);
+        issue2.setPriority(Issue.Priority.MINOR);
 
-    // @Test
-    // public void testSearchIssues() throws Exception {
-    //     List<Issue> issues = Arrays.asList(issue);
-    //     List<IssueDTO> issueDTOs = Arrays.asList(issueDTO);
+        issue1.setAssignee(dev);
+        issue1.setDescription("Updated Description");
+        issue1.setStatus(Issue.Status.ASSIGNED);
+        issue1.setPriority(Issue.Priority.MINOR);
 
-    //     when(issueService.searchIssues(anyLong(), any(Issue.class), anyLong())).thenReturn(issues);
-    //     when(modelMapper.map(any(Issue.class), any(Class.class))).thenReturn(issueDTO);
+        issueDTO1.setAssigneeUsername("dev");
+        issueDTO1.setDescription("Updated Description");
+        issueDTO1.setStatus(IssueDTO.Status.ASSIGNED);
+        issueDTO1.setPriority(IssueDTO.Priority.MINOR);
 
-    //     mockMvc.perform(get("/api/projects/1/issues/search")
-    //                     .cookie(new jakarta.servlet.http.Cookie("memberId", "1"))
-    //                     .contentType(MediaType.APPLICATION_JSON)
-    //                     .content("{\"title\": \"Test Issue\"}"))
-    //             .andExpect(status().isOk())
-    //             .andExpect(jsonPath("$[0].title").value(issueDTO.getTitle()));
-    // }
+        when(issueService.updateIssue(1L, issue2, 1L)).thenReturn(issue1);
+        
+        // when(modelMapper.map(issueDTO1, Issue.class)).thenReturn(issue1);
+        // when(modelMapper.map(issue1, IssueDTO.class)).thenReturn(issueDTO1);
+        // when(modelMapper.map(issueDTO2, Issue.class)).thenReturn(issue2);
+        // when(modelMapper.map(issue2, IssueDTO.class)).thenReturn(issueDTO2);
+
+        when(modelMapper.map(any(IssueDTO.class), eq(Issue.class))).thenReturn(issue2, issue1);
+        when(modelMapper.map(any(Issue.class), eq(IssueDTO.class))).thenReturn(issueDTO1);
+
+        mockMvc.perform(put("/api/projects/1/issues/1")
+                .cookie(new Cookie("memberId", "1"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(issueDTO2)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value(issue1.getTitle()))
+                .andExpect(jsonPath("$.description").value(issueDTO2.getDescription()));
+    }
+
+    @Test
+    public void testSearchIssues() throws Exception {
+        issue1.setAssignee(dev);
+        issue2.setAssignee(dev);
+        
+
+        List<Issue> issues = new ArrayList<>();
+        issues.add(issue1);
+        issues.add(issue2);
+        List<IssueDTO> issueDTOs = new ArrayList<>();
+        issueDTOs.add(issueDTO1);
+        issueDTOs.add(issueDTO2);
+
+        IssueDTO issueData = new IssueDTO();
+        issueData.setAssigneeUsername("dev");
+
+        Issue searchData = new Issue();
+        searchData.setAssignee(dev);
+
+        when(modelMapper.map(any(IssueDTO.class), eq(Issue.class))).thenReturn(searchData);
+        when(issueService.searchIssues(1L, searchData, 3L)).thenReturn(issues);
+        when(modelMapper.map(any(Issue.class), eq(IssueDTO.class))).thenReturn(issueDTOs.get(0), issueDTOs.get(1));
+
+        mockMvc.perform(get("/api/projects/1/issues/search")
+                .cookie(new Cookie("memberId", "3"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(issueData)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].title").value(issueDTO1.getTitle()));
+    }
 
     // @Test
     // public void testSearchIssuesbyNL() throws Exception {
@@ -217,16 +257,24 @@ public class IssueControllerTest {
     //             .andExpect(jsonPath("$[0].title").value(issueDTO.getTitle()));
     // }
 
-    // @Test
-    // public void testGetRecommendedAssignees() throws Exception {
-    //     List<User> recommendedAssignees = Arrays.asList(user);
-    //     List<UserDTO> userDTOs = Arrays.asList(userDTO);
+    @Test
+    public void testGetRecommendedAssignees() throws Exception {
 
-    //     when(issueService.getRecommendedAssignees(anyLong(), anyLong())).thenReturn(recommendedAssignees);
-    //     when(modelMapper.map(any(User.class), any(Class.class))).thenReturn(userDTO);
+        UserDTO devDTO = new UserDTO();
+        devDTO.setUsername("dev");
+        devDTO.setPassword("dev");
+        devDTO.setRole(UserDTO.Role.DEV);
 
-    //     mockMvc.perform(get("/api/projects/1/issues/1/recommendedAssignees"))
-    //             .andExpect(status().isOk())
-    //             .andExpect(jsonPath("$[0].username").value(userDTO.getUsername()));
-    // }
+        List<User> recommendedAssignees = new ArrayList<>();
+        recommendedAssignees.add(dev);
+        List<UserDTO> userDTOs = new ArrayList<>();
+        userDTOs.add(devDTO);
+
+        when(issueService.getRecommendedAssignees(1L, 3L)).thenReturn(recommendedAssignees);
+        when(modelMapper.map(any(User.class), eq(UserDTO.class))).thenReturn(userDTOs.get(0));
+
+        mockMvc.perform(get("/api/projects/1/issues/3/recommendedAssignees"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].username").value(userDTOs.get(0).getUsername()));
+    }
 }
