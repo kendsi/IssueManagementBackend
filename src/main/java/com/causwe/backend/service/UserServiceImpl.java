@@ -1,8 +1,10 @@
 package com.causwe.backend.service;
 
+import com.causwe.backend.exceptions.UserNotFoundException;
 import com.causwe.backend.model.User;
 import com.causwe.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -14,10 +16,12 @@ import java.util.stream.Collectors;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final BCryptPasswordEncoder passwordEncoder;
 
     @Autowired
-    public UserServiceImpl(UserRepository userRepository) {
+    public UserServiceImpl(UserRepository userRepository, BCryptPasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -38,17 +42,15 @@ public class UserServiceImpl implements UserService {
         if (userRepository.findByUsername(user.getUsername()) != null) {
             return null;
         }
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepository.save(user);
     }
 
     @Override
-    public Map<String, Object> login(User user) {
+    public User login(User user) {
         User existingUser = userRepository.findByUsername(user.getUsername());
-        if (existingUser != null && existingUser.getPassword().equals(user.getPassword())) {
-            Map<String, Object> responseBody = new HashMap<>();
-            responseBody.put("user", existingUser);
-            responseBody.put("memberId", existingUser.getId());
-            return responseBody;
+        if (existingUser != null && passwordEncoder.matches(user.getPassword(), existingUser.getPassword())) {
+            return existingUser;
         }
         return null;
     }
@@ -59,4 +61,18 @@ public class UserServiceImpl implements UserService {
                 .filter(user -> user.getRole() == User.Role.DEV)
                 .collect(Collectors.toList());
     }
+    /*
+    @Override
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
+    }
+
+    @Override
+    public void deleteUser(Long userId) {
+        if (!userRepository.existsById(userId)) {
+            throw new UserNotFoundException(userId);
+        }
+        userRepository.deleteById(userId);
+    }
+    */
 }

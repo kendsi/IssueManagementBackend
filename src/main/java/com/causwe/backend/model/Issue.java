@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -71,6 +72,21 @@ public class Issue {
         this.status = Status.NEW;
     }
 
+    // 복사 생성자 추가
+    public Issue(Issue issue) {
+        this.id = issue.id;
+        this.title = issue.title;
+        this.description = issue.description;
+        this.reporter = issue.reporter;
+        this.reportedDate = issue.reportedDate;
+        this.fixer = issue.fixer;
+        this.assignee = issue.assignee;
+        this.priority = issue.priority;
+        this.status = issue.status;
+        this.comments = new ArrayList<>(issue.comments);
+        this.project = issue.project;
+    }
+
     public List<Comment> getComments() {
         return comments;
     }
@@ -91,5 +107,28 @@ public class Issue {
                 comments.remove(i);
             }
         }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Issue issue = (Issue) o;
+        return id.equals(issue.id) &&
+                title.equals(issue.title) &&
+                description.equals(issue.description) &&
+                reporter.equals(issue.reporter) &&
+                reportedDate.equals(issue.reportedDate) &&
+                Objects.equals(fixer, issue.fixer) &&
+                Objects.equals(assignee, issue.assignee) &&
+                priority == issue.priority &&
+                status == issue.status &&
+                comments.equals(issue.comments) && // List 비교
+                project.equals(issue.project);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, title, description, reporter, reportedDate, fixer, assignee, priority, status, comments, project);
     }
 }

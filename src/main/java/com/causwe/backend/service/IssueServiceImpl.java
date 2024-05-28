@@ -1,5 +1,6 @@
 package com.causwe.backend.service;
 
+import com.causwe.backend.exceptions.IssueNotFoundException;
 import com.causwe.backend.exceptions.UnauthorizedException;
 import com.causwe.backend.model.Issue;
 import com.causwe.backend.model.Project;
@@ -15,13 +16,14 @@ import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.Query;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Service
@@ -49,8 +51,8 @@ public class IssueServiceImpl implements IssueService {
 
     @Override
     public Issue getIssueById(Long id) {
-        Optional<Issue> issue = issueRepository.findById(id);
-        return issue.orElse(null);
+        return issueRepository.findById(id)
+                .orElseThrow(() -> new IssueNotFoundException(id));
     }
 
     @Override
@@ -66,7 +68,9 @@ public class IssueServiceImpl implements IssueService {
         issue.setProject(project);
         Issue newIssue = issueRepository.save(issue);
 
-        issueRepository.embedIssueTitle(newIssue.getId(), newIssue.getTitle());
+        CompletableFuture.runAsync(() ->
+                issueRepository.embedIssueTitle(newIssue.getId(), newIssue.getTitle() + newIssue.getDescription())
+        );
 
         return newIssue;
     }
@@ -78,11 +82,11 @@ public class IssueServiceImpl implements IssueService {
             throw new UnauthorizedException("User not logged in");
         }
 
-        Optional<Issue> existingIssue = issueRepository.findById(id);
+        Issue issue = issueRepository.findById(id)
+                .orElseThrow(() -> new IssueNotFoundException(id));
 
-        if (existingIssue.isPresent()) {
-            Issue issue = existingIssue.get();
-
+        Issue originalIssueCopy = new Issue(issue);
+        if (issue != null) {
             // 사용자 역할 기반해서 필드 업데이트 권한 확인
             switch (currentUser.getRole()) {
                 case ADMIN:
@@ -126,11 +130,24 @@ public class IssueServiceImpl implements IssueService {
                     }
                     break;
                 case TESTER:
-                    // Tester는 status to RESOLVED 할 수 있다.
+                    // Tester는 자신이 쓴 Issue의 Title, Description, Priority을 변경할 수 있고 status to RESOLVED 할 수 있다.
+                    if (updatedIssue.getTitle() != null && issue.getReporter().getId().equals(currentUser.getId())) {
+                        issue.setTitle(updatedIssue.getTitle());
+                    }
+                    if (updatedIssue.getDescription() != null && issue.getReporter().getId().equals(currentUser.getId())) {
+                        issue.setDescription(updatedIssue.getDescription());
+                    }
+                    if (updatedIssue.getPriority() != null && issue.getReporter().getId().equals(currentUser.getId())){
+                        issue.setPriority(updatedIssue.getPriority());
+                    }
                     if (updatedIssue.getStatus() == Issue.Status.RESOLVED && issue.getReporter().getId().equals(currentUser.getId())) {
                         issue.setStatus(updatedIssue.getStatus());
                     }
                     break;
+            }
+
+            if (originalIssueCopy.equals(issue)) {
+                throw new UnauthorizedException("Issue not changed");
             }
 
             return issueRepository.save(issue);
@@ -140,15 +157,14 @@ public class IssueServiceImpl implements IssueService {
     }
 
     @Override
-    public List<Issue> searchIssues(Long projectId, Issue issue, Long memberId) {
+    public List<Issue> searchIssues(Long projectId, String assigneeUsername, String reporterUsername, Issue.Status status, Long memberId) {
         Project project = projectService.getProjectById(projectId);
-        User assignee = issue.getAssignee();
-        User reporter = issue.getReporter();
-        Issue.Status status = issue.getStatus();
 
-        if (assignee != null) {
+        if (assigneeUsername != null) {
+            User assignee = userService.getUserByUsername(assigneeUsername);
             return issueRepository.findByProjectAndAssigneeOrderByIdDesc(project, assignee);
-        } else if (reporter != null) {
+        } else if (reporterUsername != null) {
+            User reporter = userService.getUserByUsername(reporterUsername);
             return issueRepository.findByProjectAndReporterOrderByIdDesc(project, reporter);
         } else if (status != null) {
             return issueRepository.findByProjectAndStatusOrderByIdDesc(project, status);
@@ -163,7 +179,7 @@ public class IssueServiceImpl implements IssueService {
                 "  \"messages\": [\n" +
                 "    {\n" +
                 "      \"role\": \"system\",\n" +
-                "      \"content\": \"Given the following SQL tables, your job is to write queries that returns issues in the current project given a user’s request. Use Current user_id only when the user uses the phrase \\\"to me\\\". Write PostgreSQL statements without explanation.\\nFormat)\\n```sql\\n``` \\n\\nCREATE TABLE users (\\n  id BIGINT AUTO_INCREMENT PRIMARY KEY,\\n  username VARCHAR(255) NOT NULL UNIQUE,\\n  password VARCHAR(255) NOT NULL,\\n  role ENUM('ADMIN', 'PL', 'DEV', 'TESTER') NOT NULL\\n);\\n\\n-- Create the \\\"projects\\\" table\\nCREATE TABLE projects (\\n  id BIGINT AUTO_INCREMENT PRIMARY KEY,\\n  name VARCHAR(255) NOT NULL UNIQUE\\n);\\n\\n-- Create the \\\"issues\\\" table\\nCREATE TABLE issues (\\n  id BIGINT AUTO_INCREMENT PRIMARY KEY,\\n  title VARCHAR(255) NOT NULL,\\n  description TEXT NOT NULL,\\n  reporter_id BIGINT NOT NULL,\\n  reported_date DATETIME NOT NULL,\\n  fixer_id BIGINT,\\n  assignee_id BIGINT,\\n  priority ENUM('BLOCKER', 'CRITICAL', 'MAJOR', 'MINOR', 'TRIVIAL') NOT NULL,\\n  status ENUM('NEW', 'ASSIGNED', 'RESOLVED', 'CLOSED', 'REOPENED') NOT NULL,\\n  project_id BIGINT NOT NULL,\\n  FOREIGN KEY (reporter_id) REFERENCES users(id),\\n  FOREIGN KEY (fixer_id) REFERENCES users(id),\\n  FOREIGN KEY (assignee_id) REFERENCES users(id),\\n  FOREIGN KEY (project_id) REFERENCES projects(id)\\n);\\n\\n-- Create the \\\"comments\\\" table\\nCREATE TABLE comments (\\n  id BIGINT AUTO_INCREMENT PRIMARY KEY,\\n  issue_id BIGINT NOT NULL,\\n  user_id BIGINT NOT NULL,\\n  content TEXT NOT NULL,\\n  created_at DATETIME NOT NULL,\\n  FOREIGN KEY (issue_id) REFERENCES issues(id),\\n  FOREIGN KEY (user_id) REFERENCES users(id)\\n);\\n\\n--Info\\nCurrent project_id " + projectId + "\\nCurrent user_id " + memberId + "\"\n" +
+                "      \"content\": \"Given the following SQL tables, your job is to write queries that returns issues in the current project given a user’s request. Use Current user_id only when the user uses the phrase \\\"to me\\\". Write PostgreSQL statements without explanation.\\nFormat)\\n```sql\\n``` \\n\\nCREATE TABLE users (\\n  id BIGINT AUTO_INCREMENT PRIMARY KEY,\\n  username VARCHAR(255) NOT NULL UNIQUE,\\n  password VARCHAR(255) NOT NULL,\\n  role ENUM('ADMIN', 'PL', 'DEV', 'TESTER') NOT NULL\\n);\\n\\n-- Create the \\\"projects\\\" table\\nCREATE TABLE projects (\\n  id BIGINT AUTO_INCREMENT PRIMARY KEY,\\n  name VARCHAR(255) NOT NULL UNIQUE\\n);\\n\\n-- Create the \\\"issues\\\" table\\nCREATE TABLE issues (\\n  id BIGINT AUTO_INCREMENT PRIMARY KEY,\\n  title VARCHAR(255) NOT NULL,\\n  description TEXT NOT NULL,\\n  reporter_id BIGINT NOT NULL,\\n  reported_date DATETIME NOT NULL,\\n  fixer_id BIGINT,\\n  assignee_id BIGINT,\\n  priority ENUM('BLOCKER', 'CRITICAL', 'MAJOR', 'MINOR', 'TRIVIAL') NOT NULL,\\n  status ENUM('NEW', 'ASSIGNED', 'FIXED', 'RESOLVED', 'CLOSED', 'REOPENED') NOT NULL,\\n  project_id BIGINT NOT NULL,\\n  FOREIGN KEY (reporter_id) REFERENCES users(id),\\n  FOREIGN KEY (fixer_id) REFERENCES users(id),\\n  FOREIGN KEY (assignee_id) REFERENCES users(id),\\n  FOREIGN KEY (project_id) REFERENCES projects(id)\\n);\\n\\n-- Create the \\\"comments\\\" table\\nCREATE TABLE comments (\\n  id BIGINT AUTO_INCREMENT PRIMARY KEY,\\n  issue_id BIGINT NOT NULL,\\n  user_id BIGINT NOT NULL,\\n  content TEXT NOT NULL,\\n  created_at DATETIME NOT NULL,\\n  FOREIGN KEY (issue_id) REFERENCES issues(id),\\n  FOREIGN KEY (user_id) REFERENCES users(id)\\n);\\n\\n--Info\\nCurrent project_id " + projectId + "\\nCurrent user_id " + memberId + "\"\n" +
                 "    },\n" +
                 "    {\n" +
                 "      \"role\": \"user\",\n" +
@@ -209,12 +225,10 @@ public class IssueServiceImpl implements IssueService {
 
     @Override
     public List<User> getRecommendedAssignees(Long projectId, Long id) {
-        Optional<Issue> issue = issueRepository.findById(id);
-
-        if (issue.isPresent()) {
-            List<Long> assigneeIds = issueRepository.findRecommendedAssigneesByProjectId(projectId, id);
+        if (issueRepository.existsById(id)) {
+            List<Long> assigneeIds = issueRepository.findRecommendedAssigneesByProjectId(
+                    projectId, id);
             List<User> unorderedAssignees = new ArrayList<>();
-
             for (int i = 0; i < assigneeIds.size(); i++) {
                 unorderedAssignees.add(userService.getUserById(assigneeIds.get(i)));
             }
@@ -227,7 +241,7 @@ public class IssueServiceImpl implements IssueService {
                             .orElse(null))
                     .collect(Collectors.toList());
         } else {
-            return null;
+            throw new IssueNotFoundException(id);
         }
     }
 }
