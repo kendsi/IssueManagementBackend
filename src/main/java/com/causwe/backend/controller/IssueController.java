@@ -133,9 +133,9 @@ public class IssueController {
     }
 
     @GetMapping("/{id}/recommendedAssignees")
-    public ResponseEntity<List<UserDTO>> getRecommendedAssignees(@PathVariable Long projectId, @PathVariable Long id) {
+    public ResponseEntity<List<UserDTO>> getRecommendedAssignees(@PathVariable Long id) {
         try {
-            List<User> recommendedAssignees = issueService.getRecommendedAssignees(projectId, id);
+            List<User> recommendedAssignees = issueService.getRecommendedAssignees(id);
             List<UserDTO> userDTOs = recommendedAssignees
                     .stream()
                     .map(user -> modelMapper.map(user, UserDTO.class))

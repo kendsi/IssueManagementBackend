@@ -226,10 +226,9 @@ public class IssueServiceImpl implements IssueService {
     }
 
     @Override
-    public List<User> getRecommendedAssignees(Long projectId, Long id) {
+    public List<User> getRecommendedAssignees(Long id) {
         if (issueRepository.existsById(id)) {
-            List<Long> assigneeIds = issueRepository.findRecommendedAssigneesByProjectId(
-                    projectId, id);
+            List<Long> assigneeIds = issueRepository.findRecommendedAssigneesByIssueId(id);
             List<User> unorderedAssignees = new ArrayList<>();
             for (int i = 0; i < assigneeIds.size(); i++) {
                 unorderedAssignees.add(userService.getUserById(assigneeIds.get(i)));
