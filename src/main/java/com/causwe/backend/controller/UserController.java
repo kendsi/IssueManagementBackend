@@ -1,11 +1,13 @@
 package com.causwe.backend.controller;
 
+import com.causwe.backend.dto.UserRequestDTO;
+import com.causwe.backend.dto.UserResponseDTO;
 import com.causwe.backend.exceptions.UnauthorizedException;
 import com.causwe.backend.exceptions.UserNotFoundException;
-import com.causwe.backend.dto.UserDTO;
-import com.causwe.backend.model.User;
+import com.causwe.backend.model.*;
 import com.causwe.backend.security.JwtTokenProvider;
 import com.causwe.backend.service.UserService;
+import com.causwe.backend.util.RoleConverter;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -18,7 +20,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -36,20 +37,18 @@ public class UserController {
     private JwtTokenProvider jwtTokenProvider;
     
     @PostMapping("/signup")
-    public ResponseEntity<UserDTO> createUser(@RequestBody UserDTO userData, @CookieValue(name = "jwt", required = false) String token) {
+    public ResponseEntity<UserResponseDTO> createUser(@RequestBody UserRequestDTO userData, @CookieValue(name = "jwt", required = false) String token) {
         if (Objects.equals(userData.getUsername(), "") || Objects.equals(userData.getPassword(), "")) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
-
         try {
             Long memberId = jwtTokenProvider.getUserIdFromToken(token);
             User currentUser = userService.getUserById(memberId);
-            if (currentUser == null || currentUser.getRole() != User.Role.ADMIN) {
+            if (!(currentUser.canCreateUser())) {
                 throw new UnauthorizedException("Only admins can create users.");
             }
-
-            User newUser = userService.createUser(modelMapper.map(userData, User.class));
-            UserDTO newUserDTO = modelMapper.map(newUser, UserDTO.class);
+            User newUser = userService.createUser(userData.getUsername(), userData.getPassword(), RoleConverter.convertToUserRole(userData.getRole()));
+            UserResponseDTO newUserDTO = modelMapper.map(newUser, UserResponseDTO.class);
             return new ResponseEntity<>(newUserDTO, HttpStatus.CREATED);
         } catch (UserNotFoundException e) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
@@ -59,10 +58,10 @@ public class UserController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<UserDTO> login(@RequestBody UserDTO userData, HttpServletResponse response) {
-        User user = userService.login(modelMapper.map(userData, User.class));
+    public ResponseEntity<UserResponseDTO> login(@RequestBody UserRequestDTO userData, HttpServletResponse response) {
+        User user = userService.login(userData.getUsername(), userData.getPassword());
         if (user != null) {
-            String token = jwtTokenProvider.generateToken((Long) user.getId());
+            String token = jwtTokenProvider.generateToken(user.getId());
             Cookie cookie = new Cookie("jwt", token);
             cookie.setPath("/");
             cookie.setHttpOnly(true);
@@ -70,7 +69,7 @@ public class UserController {
             String cookieHeader = String.format("%s=%s; Path=%s; SameSite=None; Secure", cookie.getName(), cookie.getValue(), cookie.getPath());
             response.addHeader("Set-Cookie", cookieHeader);
 
-            UserDTO userDTO = modelMapper.map(user, UserDTO.class);
+            UserResponseDTO userDTO = modelMapper.map(user, UserResponseDTO.class);
             return new ResponseEntity<>(userDTO, HttpStatus.OK);
         } else {
             return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
@@ -78,11 +77,11 @@ public class UserController {
     }
 
     @GetMapping("")
-    public ResponseEntity<UserDTO> getUserById(@CookieValue(name = "jwt", required = false) String token) {
+    public ResponseEntity<UserResponseDTO> getUserById(@CookieValue(name = "jwt", required = false) String token) {
         try {
             Long memberId = jwtTokenProvider.getUserIdFromToken(token);
             User user = userService.getUserById(memberId);
-            UserDTO UserDTO =  modelMapper.map(user, UserDTO.class);
+            UserResponseDTO UserDTO =  modelMapper.map(user, UserResponseDTO.class);
             return new ResponseEntity<>(UserDTO, HttpStatus.OK);
         } catch (UserNotFoundException e) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
@@ -90,19 +89,19 @@ public class UserController {
     }
 
     @GetMapping("/devs")
-    public ResponseEntity<List<UserDTO>> getAllDevs() {
+    public ResponseEntity<List<UserResponseDTO>> getAllDevs() {
         List<User> devUsers = userService.getAllDevs();
 
-        List<UserDTO> devUserDTOs = devUsers
+        List<UserResponseDTO> devUserDTOs = devUsers
         .stream()
-        .map(user -> modelMapper.map(user, UserDTO.class))
+        .map(user -> modelMapper.map(user, UserResponseDTO.class))
         .collect(Collectors.toList());
 
 
         return new ResponseEntity<>(devUserDTOs, HttpStatus.OK);
     }
 
-    /*
+    /* 모든 유저 불러오기, 유저 삭제
     @GetMapping("/all")
     public ResponseEntity<List<UserDTO>> getAllUsers(@CookieValue(name = "jwt", required = false) String token) {
         try {

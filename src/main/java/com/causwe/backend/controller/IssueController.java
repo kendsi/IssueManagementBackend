@@ -1,7 +1,7 @@
 package com.causwe.backend.controller;
 
 import com.causwe.backend.dto.IssueDTO;
-import com.causwe.backend.dto.UserDTO;
+import com.causwe.backend.dto.UserResponseDTO;
 import com.causwe.backend.exceptions.IssueNotFoundException;
 import com.causwe.backend.exceptions.ProjectNotFoundException;
 import com.causwe.backend.exceptions.UnauthorizedException;
@@ -133,12 +133,12 @@ public class IssueController {
     }
 
     @GetMapping("/{id}/recommendedAssignees")
-    public ResponseEntity<List<UserDTO>> getRecommendedAssignees(@PathVariable Long id) {
+    public ResponseEntity<List<UserResponseDTO>> getRecommendedAssignees(@PathVariable Long id) {
         try {
             List<User> recommendedAssignees = issueService.getRecommendedAssignees(id);
-            List<UserDTO> userDTOs = recommendedAssignees
+            List<UserResponseDTO> userDTOs = recommendedAssignees
                     .stream()
-                    .map(user -> modelMapper.map(user, UserDTO.class))
+                    .map(user -> modelMapper.map(user, UserResponseDTO.class))
                     .collect(Collectors.toList());
             return new ResponseEntity<>(userDTOs, HttpStatus.OK);
         } catch (IssueNotFoundException e) {

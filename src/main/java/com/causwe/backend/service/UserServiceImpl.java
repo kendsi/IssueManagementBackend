@@ -1,15 +1,12 @@
 package com.causwe.backend.service;
 
-import com.causwe.backend.exceptions.UserNotFoundException;
-import com.causwe.backend.model.User;
+import com.causwe.backend.model.*;
 import com.causwe.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,18 +35,25 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public User createUser(User user) {
-        if (userRepository.findByUsername(user.getUsername()) != null) {
+    public User createUser(String username, String password, User.Role role) {
+        if (userRepository.findByUsername(username) != null) {
             return null;
         }
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        return userRepository.save(user);
+        User newUser = switch (role) {
+            case ADMIN -> new Admin();
+            case PL -> new ProjectLead();
+            case DEV -> new Developer();
+            case TESTER -> new Tester();
+        };
+        newUser.setUsername(username);
+        newUser.setPassword(passwordEncoder.encode(password));
+        return userRepository.save(newUser);
     }
 
     @Override
-    public User login(User user) {
-        User existingUser = userRepository.findByUsername(user.getUsername());
-        if (existingUser != null && passwordEncoder.matches(user.getPassword(), existingUser.getPassword())) {
+    public User login(String username, String password) {
+        User existingUser = userRepository.findByUsername(username);
+        if (existingUser != null && passwordEncoder.matches(password, existingUser.getPassword())) {
             return existingUser;
         }
         return null;
@@ -58,7 +62,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public List<User> getAllDevs() {
         return userRepository.findAll().stream()
-                .filter(user -> user.getRole() == User.Role.DEV)
+                .filter(User::isDeveloper)
                 .collect(Collectors.toList());
     }
     /*

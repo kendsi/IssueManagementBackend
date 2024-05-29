@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class ProjectServiceImpl implements ProjectService {
@@ -29,7 +28,7 @@ public class ProjectServiceImpl implements ProjectService {
         if (currentUser == null) {
             throw new UnauthorizedException("User not logged in");
         }
-        if (!(currentUser.getRole() == User.Role.ADMIN)) {
+        if (!(currentUser.canCreateProject())) {
             throw new UnauthorizedException("User not authorized to create a project.");
         }
         return projectRepository.save(project);
@@ -52,7 +51,7 @@ public class ProjectServiceImpl implements ProjectService {
             throw new UnauthorizedException("User not logged in");
         }
 
-        if (currentUser.getRole() == User.Role.ADMIN) {
+        if (currentUser.canDeleteProject()) {
             if (projectRepository.existsById(id)) {
                 projectRepository.deleteById(id);
                 return true;

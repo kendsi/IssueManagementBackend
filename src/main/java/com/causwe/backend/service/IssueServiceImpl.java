@@ -2,9 +2,7 @@ package com.causwe.backend.service;
 
 import com.causwe.backend.exceptions.IssueNotFoundException;
 import com.causwe.backend.exceptions.UnauthorizedException;
-import com.causwe.backend.model.Issue;
-import com.causwe.backend.model.Project;
-import com.causwe.backend.model.User;
+import com.causwe.backend.model.*;
 import com.causwe.backend.repository.IssueRepository;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -23,6 +21,7 @@ import jakarta.persistence.Query;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -61,7 +60,7 @@ public class IssueServiceImpl implements IssueService {
         if (currentUser == null) {
             throw new UnauthorizedException("User not logged in");
         }
-        if (!(currentUser.getRole() == User.Role.ADMIN) && !(currentUser.getRole() == User.Role.TESTER)) {
+        if (!(currentUser.canCreateIssue())) {
             throw new UnauthorizedException("User not authorized to create issue");
         }
         Project project = projectService.getProjectById(projectId);
@@ -83,79 +82,20 @@ public class IssueServiceImpl implements IssueService {
         if (currentUser == null) {
             throw new UnauthorizedException("User not logged in");
         }
-
         Issue issue = issueRepository.findById(id)
                 .orElseThrow(() -> new IssueNotFoundException(id));
 
         Issue originalIssueCopy = new Issue(issue);
-        if (issue != null) {
-            // 사용자 역할 기반해서 필드 업데이트 권한 확인
-            switch (currentUser.getRole()) {
-                case ADMIN:
-                    // 관리자는 모든 필드를 업데이트 할 수 있다
-                    if (updatedIssue.getTitle() != null) {
-                        issue.setTitle(updatedIssue.getTitle());
-                    }
-                    if (updatedIssue.getDescription() != null) {
-                        issue.setDescription(updatedIssue.getDescription());
-                    }
-                    if (updatedIssue.getPriority() != null) {
-                        issue.setPriority(updatedIssue.getPriority());
-                    }
-                    if (updatedIssue.getAssignee() != null) {
-                        issue.setAssignee(userService.getUserById(updatedIssue.getAssignee().getId()));
-                        issue.setStatus(Issue.Status.ASSIGNED);
-                    }
-                    if (updatedIssue.getStatus() != null) {
-                        issue.setStatus(updatedIssue.getStatus());
-                    }
-
-                    break;
-                case PL:
-                    // PL은 priority, status, assignee을 업데이트 할 수 있다.
-                    if (updatedIssue.getPriority() != null) {
-                        issue.setPriority(updatedIssue.getPriority());
-                    }
-                    if (updatedIssue.getAssignee() != null) {
-                        issue.setAssignee(userService.getUserById(updatedIssue.getAssignee().getId()));
-                        issue.setStatus(Issue.Status.ASSIGNED);
-                    }
-                    if (updatedIssue.getStatus() != null) {
-                        issue.setStatus(updatedIssue.getStatus());
-                    }
-                    break;
-                case DEV:
-                    // Dev는 status to FIXED 그리고 set fixer를 할 수 있다.
-                    if (updatedIssue.getStatus() == Issue.Status.FIXED) {
-                        issue.setStatus(updatedIssue.getStatus());
-                        issue.setFixer(currentUser);
-                    }
-                    break;
-                case TESTER:
-                    // Tester는 자신이 쓴 Issue의 Title, Description, Priority을 변경할 수 있고 status to RESOLVED 할 수 있다.
-                    if (updatedIssue.getTitle() != null && issue.getReporter().getId().equals(currentUser.getId())) {
-                        issue.setTitle(updatedIssue.getTitle());
-                    }
-                    if (updatedIssue.getDescription() != null && issue.getReporter().getId().equals(currentUser.getId())) {
-                        issue.setDescription(updatedIssue.getDescription());
-                    }
-                    if (updatedIssue.getPriority() != null && issue.getReporter().getId().equals(currentUser.getId())){
-                        issue.setPriority(updatedIssue.getPriority());
-                    }
-                    if (updatedIssue.getStatus() == Issue.Status.RESOLVED && issue.getReporter().getId().equals(currentUser.getId())) {
-                        issue.setStatus(updatedIssue.getStatus());
-                    }
-                    break;
-            }
-
-            if (originalIssueCopy.equals(issue)) {
-                throw new UnauthorizedException("Issue not changed");
-            }
-
-            return issueRepository.save(issue);
-        } else {
-            return null;
+        currentUser.updateIssue(issue, updatedIssue);
+        if (originalIssueCopy.equals(issue)) {
+            throw new UnauthorizedException("Issue not changed");
         }
+        if(!Objects.equals(originalIssueCopy.getTitle(), issue.getTitle())||!Objects.equals(originalIssueCopy.getDescription(), issue.getDescription())){
+            CompletableFuture.runAsync(() ->
+                    issueRepository.embedIssueTitle(issue.getId(), issue.getTitle() + issue.getDescription())
+            );
+        }
+        return issueRepository.save(issue);
     }
 
     @Override

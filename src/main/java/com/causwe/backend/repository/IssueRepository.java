@@ -30,7 +30,10 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
 
     @Modifying
     @Transactional
-    @Query(value = "INSERT INTO issue_embeddings (issue_id, issue_embedding) VALUES (:issueId, (azure_openai.create_embeddings('text-embedding-3-small', :issueTitle)))", nativeQuery = true)
+    @Query(value = "INSERT INTO issue_embeddings (issue_id, issue_embedding) " +
+            "VALUES (:issueId, azure_openai.create_embeddings('text-embedding-3-small', :issueTitle)) " +
+            "ON CONFLICT (issue_id) " +
+            "DO UPDATE SET issue_embedding = EXCLUDED.issue_embedding", nativeQuery = true)
     void embedIssueTitle(@Param("issueId") Long issueId, @Param("issueTitle") String issueTitle);
 
     @Query(value = "WITH ranked_fixers AS (" +

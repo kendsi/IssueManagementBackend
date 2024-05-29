@@ -5,15 +5,15 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class UserRequestDTO {
+public class UserResponseDTO {
 
     private String username;
-    private String password;
-    private Role role;
+    private UserResponseDTO.Role role;
 
     public enum Role {
         ADMIN, PL, DEV, TESTER
     }
 
-    public UserRequestDTO() {}
+    public UserResponseDTO() {}
+
 }
