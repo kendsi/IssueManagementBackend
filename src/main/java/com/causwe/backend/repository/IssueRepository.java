@@ -28,6 +28,119 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
     List<Issue> findByProjectAndReporterOrderByIdDesc(Project project, User reporter);
     List<Issue> findByProjectAndStatusOrderByIdDesc(Project project, Issue.Status status);
 
+    @Query(value = "SELECT TO_CHAR(DATE_TRUNC('month', reported_date), 'YYYY-MM') AS month, COUNT(*) AS issue_count " +
+            "FROM issues " +
+            "WHERE project_id = :projectId " +
+            "GROUP BY month " +
+            "ORDER BY month ASC", nativeQuery = true)
+    List<Object[]> findByProjectPerMonth(@Param("projectId") Long projectId);
+
+    @Query(value = "SELECT status, COUNT(*) AS issue_count " +
+            "FROM issues " +
+            "WHERE project_id = :projectId " +
+            "GROUP BY status " +
+            "ORDER BY status ASC", nativeQuery = true)
+    List<Object[]> findByProjectPerStatus(@Param("projectId") Long projectId);
+
+    @Query(value = "WITH dates AS (" +
+            "    SELECT generate_series(" +
+            "        current_date - interval '6 days', " +
+            "        current_date, " +
+            "        interval '1 day' " +
+            "    ) AS day" +
+            ") " +
+            "SELECT " +
+            "    TO_CHAR(d.day, 'MM-DD') AS day, " +
+            "    COALESCE(COUNT(i.reported_date), 0) AS issue_count " +
+            "FROM " +
+            "    dates d " +
+            "LEFT JOIN " +
+            "    issues i " +
+            "ON " +
+            "    DATE_TRUNC('day', i.reported_date) = d.day " +
+            "    AND i.project_id = :projectId " +
+            "    AND i.status = :status " +
+            "GROUP BY " +
+            "    d.day " +
+            "ORDER BY " +
+            "    d.day ASC", nativeQuery = true)
+    List<Object[]> findIssuesPerDayAndStatusInWeek(@Param("projectId") Long projectId, @Param("status") String status);
+
+    @Query(value = "SELECT u.username as fixer, COUNT(*) AS issue_count " +
+            "FROM issues i " +
+            "JOIN users u ON i.fixer_id = u.id " +
+            "WHERE i.project_id = :projectId " +
+            "AND i.status in ('RESOLVED', 'CLOSED') " +
+            "GROUP BY fixer " +
+            "ORDER BY issue_count DESC " +
+            "LIMIT 3", nativeQuery = true)
+    List<Object[]> findByProjectPerFixer(@Param("projectId") Long projectId);
+
+    @Query(value = "SELECT i.title , COUNT(*) AS comment_count " +
+            "FROM issues i " +
+            "JOIN comments c ON i.id = c.issue_id " +
+            "WHERE i.project_id = :projectId " +
+            "GROUP BY i.title " +
+            "ORDER BY comment_count DESC " +
+            "LIMIT 3", nativeQuery = true)
+    List<Object[]> findByProjectOrderByComments(@Param("projectId") Long projectId);
+
+    @Query(value = "WITH dates AS (" +
+            "    SELECT generate_series(" +
+            "        current_date - interval '6 days', " +
+            "        current_date, " +
+            "        CAST('1 day' AS interval) " +
+            "    ) AS day" +
+            ") " +
+            "SELECT " +
+            "    TO_CHAR(d.day, 'MM-DD') AS day, " +
+            "    COALESCE(COUNT(i.reported_date), 0) AS issue_count " +
+            "FROM " +
+            "    dates d " +
+            "LEFT JOIN " +
+            "    issues i " +
+            "ON " +
+            "    DATE_TRUNC('day', i.reported_date) = DATE_TRUNC('day', d.day) " +
+            "    AND i.project_id = :projectId " +
+            "    AND i.priority = :priority " +
+            "GROUP BY " +
+            "    day " +
+            "ORDER BY " +
+            "    day ASC", nativeQuery = true)
+    List<Object[]> findIssuesPerDayAndPriorityInWeek(@Param("projectId") Long projectId, @Param("priority") String priority);
+
+    @Query(value = "WITH dates AS (" +
+            "    SELECT generate_series(" +
+            "        DATE_TRUNC('month', current_date), " +
+            "        DATE_TRUNC('month', current_date) + interval '1 month - 1 day', " +
+            "        CAST('1 day' AS interval) " +
+            "    ) AS day" +
+            ") " +
+            "SELECT " +
+            "    TO_CHAR(d.day, 'MM-DD') AS day, " +
+            "    COALESCE(COUNT(i.reported_date), 0) AS issue_count " +
+            "FROM " +
+            "    dates d " +
+            "LEFT JOIN " +
+            "    issues i " +
+            "ON " +
+            "    DATE_TRUNC('day', i.reported_date) = d.day " +
+            "    AND i.project_id = :projectId " +
+            "GROUP BY " +
+            "    d.day " +
+            "ORDER BY " +
+            "    d.day ASC", nativeQuery = true)
+    List<Object[]> findByProjectPerDayInMonth(@Param("projectId") Long projectId);
+
+    @Query(value = "SELECT priority, COUNT(*) AS issue_count " +
+            "FROM issues " +
+            "WHERE project_id = :projectId " +
+            "AND DATE_TRUNC('month', reported_date) = DATE_TRUNC('month', current_date) " +
+            "GROUP BY priority " +
+            "ORDER BY priority ASC", nativeQuery = true)
+    List<Object[]> findByProjectPerPriorityInMonth(@Param("projectId") Long projectId);
+
+
     @Modifying
     @Transactional
     @Query(value = "INSERT INTO issue_embeddings (issue_id, issue_embedding) " +

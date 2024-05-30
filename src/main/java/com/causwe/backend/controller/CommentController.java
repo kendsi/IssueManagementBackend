@@ -1,6 +1,7 @@
 package com.causwe.backend.controller;
 
 import com.causwe.backend.dto.CommentDTO;
+
 import com.causwe.backend.exceptions.CommentNotFoundException;
 import com.causwe.backend.exceptions.IssueNotFoundException;
 import com.causwe.backend.exceptions.UnauthorizedException;
@@ -68,6 +69,7 @@ public class CommentController {
     @PutMapping("/{id}")
     @CacheEvict(value = "comments", key = "#issueId")
     public ResponseEntity<CommentDTO> updateComment(@PathVariable Long issueId, @PathVariable Long id, @RequestBody CommentDTO updatedComment, @CookieValue(name = "jwt", required = false) String token) {
+
         if (Objects.equals(updatedComment.getContent(), "")) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
@@ -76,6 +78,7 @@ public class CommentController {
             Long memberId = jwtTokenProvider.getUserIdFromToken(token);
             Comment updated = commentService.updateComment(id, modelMapper.map(updatedComment, Comment.class), memberId);
             CommentDTO updatedDTO = modelMapper.map(updated, CommentDTO.class);
+
             return new ResponseEntity<>(updatedDTO, HttpStatus.OK);
         } catch (CommentNotFoundException e) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
