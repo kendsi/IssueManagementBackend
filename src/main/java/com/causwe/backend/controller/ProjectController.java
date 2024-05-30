@@ -9,6 +9,8 @@ import com.causwe.backend.service.ProjectService;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -31,6 +33,7 @@ public class ProjectController {
     private JwtTokenProvider jwtTokenProvider;
 
     @PostMapping("")
+    @CacheEvict(value = {"projects", "issues", "issuesBySearch", "issuesByNLSearch"}, allEntries = true)
     public ResponseEntity<ProjectDTO> createProject(@RequestBody ProjectDTO projectData, @CookieValue(name = "jwt", required = false) String token) {
         if (Objects.equals(projectData.getName(), "")) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
@@ -47,6 +50,7 @@ public class ProjectController {
     }
 
     @GetMapping("")
+    @Cacheable("projects")
     public ResponseEntity<List<ProjectDTO>> getAllProjects() {
         List<Project> projects = projectService.getAllProjects();
         
@@ -59,6 +63,7 @@ public class ProjectController {
     }
 
     @GetMapping("/{id}")
+    @Cacheable(value = "projects", key = "#id")
     public ResponseEntity<ProjectDTO> getProjectById(@PathVariable Long id) {
         try {
             Project project = projectService.getProjectById(id);
@@ -70,6 +75,7 @@ public class ProjectController {
     }
 
     @DeleteMapping("{id}")
+    @CacheEvict(value = {"projects", "issues", "issuesBySearch", "issuesByNLSearch"}, allEntries = true)
     public ResponseEntity<Void> deleteProject(@PathVariable Long id, @CookieValue(name = "jwt", required = false) String token) {
         try {
             Long memberId = jwtTokenProvider.getUserIdFromToken(token);

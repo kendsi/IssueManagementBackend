@@ -10,6 +10,8 @@ import com.causwe.backend.service.CommentService;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -32,6 +34,7 @@ public class CommentController {
     private JwtTokenProvider jwtTokenProvider;
 
     @GetMapping("")
+    @Cacheable(value = "comments", key = "#issueId")
     public ResponseEntity<List<CommentDTO>> getAllComment(@PathVariable Long issueId) {
         List<Comment> comments = commentService.getAllComments(issueId);
 
@@ -44,6 +47,7 @@ public class CommentController {
     }
 
     @PostMapping("")
+    @CacheEvict(value = "comments", key = "#issueId")
     public ResponseEntity<CommentDTO> addComment(@PathVariable Long issueId, @RequestBody CommentDTO commentData, @CookieValue(name = "jwt", required = false) String token) {
         if (Objects.equals(commentData.getContent(), "")) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
@@ -62,6 +66,7 @@ public class CommentController {
     }
 
     @PutMapping("/{id}")
+    @CacheEvict(value = "comments", key = "#issueId")
     public ResponseEntity<CommentDTO> updateComment(@PathVariable Long id, @RequestBody CommentDTO updatedComment, @CookieValue(name = "jwt", required = false) String token) {
         if (Objects.equals(updatedComment.getContent(), "")) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
@@ -80,6 +85,7 @@ public class CommentController {
     }
 
     @DeleteMapping("/{id}")
+    @CacheEvict(value = "comments", key = "#issueId")
     public ResponseEntity<Void> deleteComment(@PathVariable Long id, @CookieValue(name = "jwt", required = false) String token) {
         try {
             Long memberId = jwtTokenProvider.getUserIdFromToken(token);
