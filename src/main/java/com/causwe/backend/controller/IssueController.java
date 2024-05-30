@@ -1,7 +1,7 @@
 package com.causwe.backend.controller;
 
 import com.causwe.backend.dto.IssueDTO;
-import com.causwe.backend.dto.UserDTO;
+import com.causwe.backend.dto.UserResponseDTO;
 import com.causwe.backend.exceptions.IssueNotFoundException;
 import com.causwe.backend.exceptions.ProjectNotFoundException;
 import com.causwe.backend.exceptions.UnauthorizedException;
@@ -12,6 +12,8 @@ import com.causwe.backend.service.IssueService;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -35,6 +37,7 @@ public class IssueController {
     private JwtTokenProvider jwtTokenProvider;
 
     @GetMapping("")
+    @Cacheable(value = "issues", key = "{#projectId, #token}", unless = "#result == null || #memberId == null")
     public ResponseEntity<List<IssueDTO>> getAllIssues(@PathVariable Long projectId, @CookieValue(name = "jwt", required = false) String token) {
         try {
             Long memberId = jwtTokenProvider.getUserIdFromToken(token);
@@ -50,6 +53,7 @@ public class IssueController {
     }
 
     @GetMapping("/{id}")
+    @Cacheable(value = "issues", key = "#id", unless = "#result == null || #memberId == null")
     public ResponseEntity<IssueDTO> getIssueById(@PathVariable Long id) {
         try {
             Issue issue = issueService.getIssueById(id);
@@ -61,6 +65,7 @@ public class IssueController {
     }
 
     @PostMapping("")
+    @CacheEvict(value = {"issuesPerMonth", "issues", "issuesBySearch", "issuesByNLSearch"}, allEntries = true)
     public ResponseEntity<IssueDTO> createIssue(@PathVariable Long projectId, @RequestBody IssueDTO issueData, @CookieValue(name = "jwt", required = false) String token) {
         if (Objects.equals(issueData.getTitle(), "")) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
@@ -79,6 +84,7 @@ public class IssueController {
     }
 
     @PutMapping("/{id}")
+    @CacheEvict(value = {"issues", "issuesBySearch", "issuesByNLSearch", "issue_recommendedAssignees"}, allEntries = true)
     public ResponseEntity<IssueDTO> updateIssue(@PathVariable Long id, @RequestBody IssueDTO updatedIssue, @CookieValue(name = "jwt", required = false) String token) {
         if (Objects.equals(updatedIssue.getTitle(), "")) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
@@ -97,6 +103,7 @@ public class IssueController {
     }
 
     @GetMapping("/search")
+    @Cacheable(value = "issuesBySearch", key = "{#projectId, #assigneeUsername, #reporterUsername, #status, #token}", unless = "#result == null || #memberId == null")
     public ResponseEntity<List<IssueDTO>> searchIssues(@PathVariable Long projectId,
                                                        @RequestParam(value = "assigneeUsername", required = false) String assigneeUsername,
                                                        @RequestParam(value = "reporterUsername", required = false) String reporterUsername,
@@ -115,6 +122,7 @@ public class IssueController {
     }
 
     @GetMapping("/searchbynl")
+    @Cacheable(value = "issuesByNLSearch", key = "{#projectId, #userMessage, #token}")
     public ResponseEntity<List<IssueDTO>> searchIssuesbyNL(@PathVariable Long projectId,
                                                            @RequestParam(value = "userMessage") String userMessage,
                                                            @CookieValue(name = "jwt", required = false) String token) {
@@ -133,12 +141,13 @@ public class IssueController {
     }
 
     @GetMapping("/{id}/recommendedAssignees")
-    public ResponseEntity<List<UserDTO>> getRecommendedAssignees(@PathVariable Long projectId, @PathVariable Long id) {
+    @Cacheable(value = "issue_recommendedAssignees", key = "#id")
+    public ResponseEntity<List<UserResponseDTO>> getRecommendedAssignees(@PathVariable Long id) {
         try {
-            List<User> recommendedAssignees = issueService.getRecommendedAssignees(projectId, id);
-            List<UserDTO> userDTOs = recommendedAssignees
+            List<User> recommendedAssignees = issueService.getRecommendedAssignees(id);
+            List<UserResponseDTO> userDTOs = recommendedAssignees
                     .stream()
-                    .map(user -> modelMapper.map(user, UserDTO.class))
+                    .map(user -> modelMapper.map(user, UserResponseDTO.class))
                     .collect(Collectors.toList());
             return new ResponseEntity<>(userDTOs, HttpStatus.OK);
         } catch (IssueNotFoundException e) {
