@@ -37,7 +37,7 @@ public class IssueController {
     private JwtTokenProvider jwtTokenProvider;
 
     @GetMapping("")
-    @Cacheable(value = "issues", key = "{#projectId, #memberId}")
+    @Cacheable(value = "issues", key = "{#projectId, #token}", unless = "#result == null || #memberId == null")
     public ResponseEntity<List<IssueDTO>> getAllIssues(@PathVariable Long projectId, @CookieValue(name = "jwt", required = false) String token) {
         try {
             Long memberId = jwtTokenProvider.getUserIdFromToken(token);
@@ -53,7 +53,7 @@ public class IssueController {
     }
 
     @GetMapping("/{id}")
-    @Cacheable(value = "issues", key = "#id")
+    @Cacheable(value = "issues", key = "#id", unless = "#result == null || #memberId == null")
     public ResponseEntity<IssueDTO> getIssueById(@PathVariable Long id) {
         try {
             Issue issue = issueService.getIssueById(id);
@@ -84,7 +84,7 @@ public class IssueController {
     }
 
     @PutMapping("/{id}")
-    @CacheEvict(value = {"issues", "issuesBySearch", "issuesByNLSearch"}, allEntries = true)
+    @CacheEvict(value = {"issues", "issuesBySearch", "issuesByNLSearch", "issue_recommendedAssignees"}, allEntries = true)
     public ResponseEntity<IssueDTO> updateIssue(@PathVariable Long id, @RequestBody IssueDTO updatedIssue, @CookieValue(name = "jwt", required = false) String token) {
         if (Objects.equals(updatedIssue.getTitle(), "")) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
@@ -103,7 +103,7 @@ public class IssueController {
     }
 
     @GetMapping("/search")
-    @Cacheable(value = "issuesBySearch", key = "{#projectId, #assigneeUsername, #reporterUsername, #status, #memberId}")
+    @Cacheable(value = "issuesBySearch", key = "{#projectId, #assigneeUsername, #reporterUsername, #status, #token}", unless = "#result == null || #memberId == null")
     public ResponseEntity<List<IssueDTO>> searchIssues(@PathVariable Long projectId,
                                                        @RequestParam(value = "assigneeUsername", required = false) String assigneeUsername,
                                                        @RequestParam(value = "reporterUsername", required = false) String reporterUsername,
@@ -122,7 +122,7 @@ public class IssueController {
     }
 
     @GetMapping("/searchbynl")
-    @Cacheable(value = "issuesByNLSearch", key = "{#projectId, #userMessage, #memberId}")
+    @Cacheable(value = "issuesByNLSearch", key = "{#projectId, #userMessage, #token}")
     public ResponseEntity<List<IssueDTO>> searchIssuesbyNL(@PathVariable Long projectId,
                                                            @RequestParam(value = "userMessage") String userMessage,
                                                            @CookieValue(name = "jwt", required = false) String token) {
@@ -141,6 +141,7 @@ public class IssueController {
     }
 
     @GetMapping("/{id}/recommendedAssignees")
+    @Cacheable(value = "issue_recommendedAssignees", key = "#id")
     public ResponseEntity<List<UserResponseDTO>> getRecommendedAssignees(@PathVariable Long id) {
         try {
             List<User> recommendedAssignees = issueService.getRecommendedAssignees(id);

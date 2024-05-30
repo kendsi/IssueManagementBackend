@@ -14,6 +14,7 @@ import jakarta.servlet.http.HttpServletResponse;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -77,6 +78,7 @@ public class UserController {
     }
 
     @GetMapping("")
+    @Cacheable(value = "userById", key = "#token", unless = "#result == null || #memberId == null")
     public ResponseEntity<UserResponseDTO> getUserById(@CookieValue(name = "jwt", required = false) String token) {
         try {
             Long memberId = jwtTokenProvider.getUserIdFromToken(token);
@@ -89,6 +91,7 @@ public class UserController {
     }
 
     @GetMapping("/devs")
+    @Cacheable("allDevs")
     public ResponseEntity<List<UserResponseDTO>> getAllDevs() {
         List<User> devUsers = userService.getAllDevs();
 
