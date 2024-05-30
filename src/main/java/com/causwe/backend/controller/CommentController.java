@@ -1,9 +1,7 @@
 package com.causwe.backend.controller;
 
 import com.causwe.backend.dto.CommentDTO;
-import com.causwe.backend.dto.IssueDTO;
 import com.causwe.backend.model.Comment;
-import com.causwe.backend.model.Issue;
 import com.causwe.backend.service.CommentService;
 
 import org.modelmapper.ModelMapper;
@@ -55,13 +53,13 @@ public class CommentController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<IssueDTO> updateComment(@PathVariable Long id, @RequestBody CommentDTO updatedComment, @CookieValue(value = "memberId", required = false) Long memberId) {
+    public ResponseEntity<CommentDTO> updateComment(@PathVariable Long id, @RequestBody CommentDTO updatedComment, @CookieValue(value = "memberId", required = false) Long memberId) {
         if (Objects.equals(updatedComment.getContent(), "")) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
 
         Comment updated = commentService.updateComment(id, modelMapper.map(updatedComment, Comment.class), memberId);
-        IssueDTO updatedDTO = modelMapper.map(updated, IssueDTO.class);
+        CommentDTO updatedDTO = modelMapper.map(updated, CommentDTO.class);
 
         if (updated != null) {
             return new ResponseEntity<>(updatedDTO, HttpStatus.OK);

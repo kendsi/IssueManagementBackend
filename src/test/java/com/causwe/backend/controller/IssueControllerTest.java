@@ -121,9 +121,9 @@ public class IssueControllerTest {
         when(modelMapper.map(issue2, IssueDTO.class)).thenReturn(issueDTO2);
 
         mockMvc.perform(get("/api/projects/1/issues")
-            .cookie(new Cookie("memberId", "3")))
-            .andExpect(status().isOk())
-            .andExpect(jsonPath("$[0].title").value(issueDTO1.getTitle()));
+                .cookie(new Cookie("memberId", "3")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].title").value(issueDTO1.getTitle()));
     }
 
     @Test
