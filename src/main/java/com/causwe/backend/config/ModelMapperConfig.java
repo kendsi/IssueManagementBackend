@@ -23,7 +23,10 @@ public class ModelMapperConfig {
     @Bean
     public ModelMapper modelMapper() {
         ModelMapper modelMapper = new ModelMapper();
+
         modelMapper.getConfiguration().setMatchingStrategy(MatchingStrategies.STRICT);
+
+
         Converter<String, User> usernameToUserConverter = new Converter<String, User>() {
             @Override
             public User convert(MappingContext<String, User> context) {

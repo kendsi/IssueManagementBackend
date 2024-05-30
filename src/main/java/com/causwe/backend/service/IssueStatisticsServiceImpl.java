@@ -5,6 +5,7 @@ import com.causwe.backend.repository.IssueRepository;
 
 import org.hibernate.annotations.DialectOverride.OverridesAnnotation;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.PathVariable;
 
@@ -110,7 +111,8 @@ public class IssueStatisticsServiceImpl implements IssueStatisticsService {
 
         return issuesPerDayAndPriorityInWeek;
     }
-
+  
+    @Cacheable("issuesPerMonth")
     @Override
     public Map<String, Long> getIssuesPerMonth(Long projectId) {
         List<Object[]> results = issueRepository.findByProjectPerMonth(projectId);

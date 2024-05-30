@@ -1,11 +1,16 @@
 package com.causwe.backend.controller;
 
 import com.causwe.backend.dto.ProjectDTO;
+import com.causwe.backend.exceptions.ProjectNotFoundException;
+import com.causwe.backend.exceptions.UnauthorizedException;
 import com.causwe.backend.model.Project;
+import com.causwe.backend.security.JwtTokenProvider;
 import com.causwe.backend.service.ProjectService;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -24,19 +29,28 @@ public class ProjectController {
     @Autowired
     private ModelMapper modelMapper;
 
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
+
     @PostMapping("")
-    public ResponseEntity<ProjectDTO> createProject(@RequestBody ProjectDTO projectData, @CookieValue(value = "memberId", required = false) Long memberId) {
+    @CacheEvict(value = {"projects", "issues", "issuesBySearch", "issuesByNLSearch"}, allEntries = true)
+    public ResponseEntity<ProjectDTO> createProject(@RequestBody ProjectDTO projectData, @CookieValue(name = "jwt", required = false) String token) {
         if (Objects.equals(projectData.getName(), "")) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         }
 
-        Project newProject = projectService.createProject(modelMapper.map(projectData, Project.class), memberId);
-        ProjectDTO newProjectDTO = modelMapper.map(newProject, ProjectDTO.class);
-
-        return new ResponseEntity<>(newProjectDTO, HttpStatus.CREATED);
+        try {
+            Long memberId = jwtTokenProvider.getUserIdFromToken(token);
+            Project newProject = projectService.createProject(modelMapper.map(projectData, Project.class), memberId);
+            ProjectDTO newProjectDTO = modelMapper.map(newProject, ProjectDTO.class);
+            return new ResponseEntity<>(newProjectDTO, HttpStatus.CREATED);
+        } catch (UnauthorizedException e) {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
+        }
     }
 
     @GetMapping("")
+    @Cacheable("projects")
     public ResponseEntity<List<ProjectDTO>> getAllProjects() {
         List<Project> projects = projectService.getAllProjects();
         
@@ -49,23 +63,28 @@ public class ProjectController {
     }
 
     @GetMapping("/{id}")
+    @Cacheable(value = "projects", key = "#id")
     public ResponseEntity<ProjectDTO> getProjectById(@PathVariable Long id) {
-        Project project = projectService.getProjectById(id);
-        if (project != null) {
+        try {
+            Project project = projectService.getProjectById(id);
             ProjectDTO projectDTO = modelMapper.map(project, ProjectDTO.class);
             return new ResponseEntity<>(projectDTO, HttpStatus.OK);
-        } else {
+        } catch (ProjectNotFoundException e) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
     }
 
     @DeleteMapping("{id}")
-    public ResponseEntity<Void> deleteProject(@PathVariable Long id, @CookieValue(value = "memberId", required = false) Long memberId) {
-        boolean isDeleted = projectService.deleteProject(id, memberId);
-        if (isDeleted) {
+    @CacheEvict(value = {"projects", "issues", "issuesBySearch", "issuesByNLSearch"}, allEntries = true)
+    public ResponseEntity<Void> deleteProject(@PathVariable Long id, @CookieValue(name = "jwt", required = false) String token) {
+        try {
+            Long memberId = jwtTokenProvider.getUserIdFromToken(token);
+            projectService.deleteProject(id, memberId);
             return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-        } else {
+        } catch (ProjectNotFoundException e) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        } catch (UnauthorizedException e) {
+            return new ResponseEntity<>(HttpStatus.UNAUTHORIZED);
         }
     }
 }

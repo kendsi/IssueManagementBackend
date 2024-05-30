@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class ProjectServiceImpl implements ProjectService {
@@ -29,6 +28,9 @@ public class ProjectServiceImpl implements ProjectService {
         if (currentUser == null) {
             throw new UnauthorizedException("User not logged in");
         }
+        if (!(currentUser.canCreateProject())) {
+            throw new UnauthorizedException("User not authorized to create a project.");
+        }
         return projectRepository.save(project);
     }
 
@@ -39,8 +41,7 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public Project getProjectById(Long id) {
-        Optional<Project> project = projectRepository.findById(id);
-        return project.orElseThrow(() -> new ProjectNotFoundException(id));
+        return projectRepository.findById(id).orElseThrow(() -> new ProjectNotFoundException(id));
     }
 
     @Override
@@ -50,19 +51,15 @@ public class ProjectServiceImpl implements ProjectService {
             throw new UnauthorizedException("User not logged in");
         }
 
-        Optional<Project> project = projectRepository.findById(id);
-
-        if (project.isPresent()) {
-            if(currentUser.getRole() == User.Role.ADMIN){
+        if (currentUser.canDeleteProject()) {
+            if (projectRepository.existsById(id)) {
                 projectRepository.deleteById(id);
                 return true;
+            } else {
+                throw new ProjectNotFoundException(id);
             }
-            else {
-                return false;
-            }
-        }
-        else {
-            return false;
+        } else {
+            throw new UnauthorizedException("You are not authorized to delete this comment.");
         }
     }
 }

@@ -17,6 +17,7 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
             "WHERE i.project_id = :projectId " +
             "ORDER BY CASE " +
             "  WHEN (SELECT role FROM users WHERE id = :memberId) = 'PL' AND i.status = 'NEW' THEN 0 " +
+            "  WHEN (SELECT role FROM users WHERE id = :memberId) = 'PL' AND i.status = 'RESOLVED' THEN 1 " +
             "  WHEN (SELECT role FROM users WHERE id = :memberId) = 'DEV' AND i.assignee_id = :memberId THEN 0 " +
             "  WHEN (SELECT role FROM users WHERE id = :memberId) = 'TESTER' AND i.reporter_id = :memberId AND i.status = 'FIXED' THEN 0 " +
             "  WHEN (SELECT role FROM users WHERE id = :memberId) = 'TESTER' AND i.reporter_id = :memberId THEN 1 " +
@@ -142,7 +143,10 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
 
     @Modifying
     @Transactional
-    @Query(value = "INSERT INTO issue_embeddings (issue_id, issue_embedding) VALUES (:issueId, (azure_openai.create_embeddings('text-embedding-3-small', :issueTitle)))", nativeQuery = true)
+    @Query(value = "INSERT INTO issue_embeddings (issue_id, issue_embedding) " +
+            "VALUES (:issueId, azure_openai.create_embeddings('text-embedding-3-small', :issueTitle)) " +
+            "ON CONFLICT (issue_id) " +
+            "DO UPDATE SET issue_embedding = EXCLUDED.issue_embedding", nativeQuery = true)
     void embedIssueTitle(@Param("issueId") Long issueId, @Param("issueTitle") String issueTitle);
 
     @Query(value = "WITH ranked_fixers AS (" +
@@ -151,7 +155,7 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
             "           ROW_NUMBER() OVER (PARTITION BY i.fixer_id ORDER BY e.issue_embedding <=> (SELECT e2.issue_embedding FROM issue_embeddings e2 WHERE e2.issue_id = :issueId)) AS row_num " +
             "    FROM issue_embeddings e " +
             "    INNER JOIN issues i ON i.id = e.issue_id " +
-            "    WHERE i.project_id = :projectId AND (i.status = 'RESOLVED' OR i.status = 'CLOSED') " +
+            "    WHERE (i.status = 'RESOLVED' OR i.status = 'CLOSED') " +
             "), " +
             "unique_fixers AS (" +
             "    SELECT fixer_id, similarity " +
@@ -162,6 +166,7 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
             "FROM unique_fixers " +
             "ORDER BY similarity " +
             "LIMIT 3", nativeQuery = true)
-    List<Long> findRecommendedAssigneesByProjectId(@Param("projectId") Long projectId, @Param("issueId") Long issueId);
+    List<Long> findRecommendedAssigneesByIssueId(@Param("issueId") Long issueId);
+
 
 }

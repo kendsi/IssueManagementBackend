@@ -12,7 +12,7 @@ public interface IssueService {
     Issue getIssueById(Long id);
     Issue createIssue(Long projectId, Issue issueData, Long memberId);
     Issue updateIssue(Long id, Issue updatedIssue, Long memberId);
-    List<Issue> searchIssues(Long projectId, Issue issue, Long memberId);
+    List<Issue> searchIssues(Long projectId, String assigneeUsername, String reporterUsername, Issue.Status status, Long memberId);
     List<Issue> searchIssuesByNL(Long projectId, String userMessage, Long memberId) throws IOException;
-    List<User> getRecommendedAssignees(Long projectId, Long id);
+    List<User> getRecommendedAssignees(Long id);
 }
