@@ -34,14 +34,10 @@ public class IssueStatisticsController {
         return new ResponseEntity<>(issuesPerFixer, HttpStatus.OK);
     }
 
-    @GetMapping("/issuesPerDayAndStatusInWeek")
-    public ResponseEntity<Map<String, Long>> getIssuesPerDayAndStatusInWeek(@PathVariable Long projectId, @RequestBody Issue.Status status) {
-        if (status != null) {
-            Map<String, Long> issuesPerDayAndStatusInWeek = issueStatisticsService.getIssuesPerDayAndStatusInWeek(projectId, status.toString());
-            return new ResponseEntity<>(issuesPerDayAndStatusInWeek, HttpStatus.OK);
-        } else {
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
-        } 
+    @GetMapping("/issuesPerDayAndStatusInWeek/{status}")
+    public ResponseEntity<Map<String, Long>> getIssuesPerDayAndStatusInWeek(@PathVariable Long projectId, @PathVariable Issue.Status status) {
+        Map<String, Long> issuesPerDayAndStatusInWeek = issueStatisticsService.getIssuesPerDayAndStatusInWeek(projectId, status.toString());
+        return new ResponseEntity<>(issuesPerDayAndStatusInWeek, HttpStatus.OK);
     }
 
     @GetMapping("/issuesOrderByComments")
@@ -56,14 +52,10 @@ public class IssueStatisticsController {
         return new ResponseEntity<>(issuesPerDayInMonth, HttpStatus.OK);
     }
 
-    @GetMapping("/issuesPerDayAndPriorityInWeek")
-    public ResponseEntity<Map<String, Long>> getIssuesPerDayAndPriorityInWeek(@PathVariable Long projectId, @RequestBody Issue.Priority priority) {
-        if (priority != null) {
-            Map<String, Long> issuesPerDayAndPriorityInWeek = issueStatisticsService.getIssuesPerDayAndPriorityInWeek(projectId, priority.toString());
-            return new ResponseEntity<>(issuesPerDayAndPriorityInWeek, HttpStatus.OK);
-        } else {
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
-        } 
+    @GetMapping("/issuesPerDayAndPriorityInWeek/{priority}")
+    public ResponseEntity<Map<String, Long>> getIssuesPerDayAndPriorityInWeek(@PathVariable Long projectId, @PathVariable Issue.Priority priority) {
+        Map<String, Long> issuesPerDayAndPriorityInWeek = issueStatisticsService.getIssuesPerDayAndPriorityInWeek(projectId, priority.toString());
+        return new ResponseEntity<>(issuesPerDayAndPriorityInWeek, HttpStatus.OK);
     }
 
     @GetMapping("/issuesPerMonth")
