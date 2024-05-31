@@ -7,12 +7,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
-import org.springframework.web.bind.annotation.RequestParam;
 
 
 @RestController
@@ -28,9 +26,15 @@ public class IssueStatisticsController {
         return new ResponseEntity<>(issuesPerStatus, HttpStatus.OK);
     }
 
+    @GetMapping("/issueStatusCounts") // New API endpoint
+    public ResponseEntity<Map<String, Long>> getIssueStatusCounts(@PathVariable Long projectId) {
+        Map<String, Long> issueStatusCounts = issueStatisticsService.getIssueStatusCounts(projectId);
+        return new ResponseEntity<>(issueStatusCounts, HttpStatus.OK);
+    }
+
     @GetMapping("/issuesPerFixer")
-    public ResponseEntity<Map<String, Long>> getIssuesPerFixer(@PathVariable Long projectId) {
-        Map<String, Long> issuesPerFixer = issueStatisticsService.getIssuesPerFixer(projectId);
+    public ResponseEntity<Map<String, Map<String, Long>>> getIssuesPerFixer(@PathVariable Long projectId) {
+        Map<String, Map<String, Long>> issuesPerFixer = issueStatisticsService.getIssuesPerFixer(projectId);
         return new ResponseEntity<>(issuesPerFixer, HttpStatus.OK);
     }
 
@@ -69,4 +73,11 @@ public class IssueStatisticsController {
         Map<String, Long> issuesPerPriorityInMonth = issueStatisticsService.getIssuesPerPriorityInMonth(projectId);
         return new ResponseEntity<>(issuesPerPriorityInMonth, HttpStatus.OK);
     }
+
+    @GetMapping("/issuesPerDayAndStatusInWeek")
+    public ResponseEntity<Map<String, Map<String, Long>>> getIssuesPerDayAndStatusInWeek(@PathVariable Long projectId) {
+        Map<String, Map<String, Long>> issuesPerDayAndStatusInWeek = issueStatisticsService.getIssuesPerDayAndStatusInWeek(projectId);
+        return new ResponseEntity<>(issuesPerDayAndStatusInWeek, HttpStatus.OK);
+    }
+
 }
