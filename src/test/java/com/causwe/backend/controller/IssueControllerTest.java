@@ -1,11 +1,16 @@
 package com.causwe.backend.controller;
 
 import com.causwe.backend.dto.IssueDTO;
-import com.causwe.backend.dto.UserDTO;
+import com.causwe.backend.dto.UserResponseDTO;
 import com.causwe.backend.exceptions.GlobalExceptionHandler;
+import com.causwe.backend.exceptions.IssueNotFoundException;
+import com.causwe.backend.model.Admin;
+import com.causwe.backend.model.Developer;
 import com.causwe.backend.model.Issue;
 import com.causwe.backend.model.Project;
+import com.causwe.backend.model.Tester;
 import com.causwe.backend.model.User;
+import com.causwe.backend.security.JwtTokenProvider;
 import com.causwe.backend.service.IssueService;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -50,6 +55,9 @@ public class IssueControllerTest {
     @Mock
     private ModelMapper modelMapper;
 
+    @Mock
+    private JwtTokenProvider jwtTokenProvider;
+
     @InjectMocks
     private IssueController issueController;
 
@@ -71,14 +79,20 @@ public class IssueControllerTest {
 
         objectMapper = new ObjectMapper();
 
-        admin = new User("admin", "admin", User.Role.ADMIN);
+        admin = new Admin();
+        admin.setUsername("admin");
+        admin.setPassword("admin");
         admin.setId(1L);
 
-        dev = new User("dev", "dev", User.Role.DEV);
+        dev = new Developer();
+        dev.setUsername("dev");
+        dev.setPassword("dev");
         dev.setId(2L);
 
-        tester = new User("tester", "tester", User.Role.TESTER);
-        dev.setId(3L);
+        tester = new Tester();
+        tester.setUsername("tester");
+        tester.setPassword("tester");
+        tester.setId(3L);
 
         project = new Project();
         project.setId(1L);
@@ -109,19 +123,17 @@ public class IssueControllerTest {
         issues.add(issue1);
         issues.add(issue2);
 
-        
-
         List<IssueDTO> issueDTOs = new ArrayList<>();
         issueDTOs.add(issueDTO1);
         issueDTOs.add(issueDTO2);
 
-
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(3L);
         when(issueService.getAllIssues(1L, 3L)).thenReturn(issues);
         when(modelMapper.map(issue1, IssueDTO.class)).thenReturn(issueDTO1);
         when(modelMapper.map(issue2, IssueDTO.class)).thenReturn(issueDTO2);
 
         mockMvc.perform(get("/api/projects/1/issues")
-                .cookie(new Cookie("memberId", "3")))
+                .cookie(new Cookie("jwt", "token")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].title").value(issueDTO1.getTitle()));
     }
@@ -138,7 +150,7 @@ public class IssueControllerTest {
 
     @Test
     public void testGetIssueById_NotFound() throws Exception {
-        when(issueService.getIssueById(3L)).thenReturn(null);
+        when(issueService.getIssueById(3L)).thenThrow(new IssueNotFoundException(3L));
         when(modelMapper.map(issue1, IssueDTO.class)).thenReturn(issueDTO1);
 
         mockMvc.perform(get("/api/projects/1/issues/3"))
@@ -147,12 +159,13 @@ public class IssueControllerTest {
 
     @Test
     public void testCreateIssue_Success() throws Exception {
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(3L);
         when(issueService.createIssue(1L, issue2, 3L)).thenReturn(issue2);
         when(modelMapper.map(issueDTO2, Issue.class)).thenReturn(issue2);
         when(modelMapper.map(issue2, IssueDTO.class)).thenReturn(issueDTO2);
 
         mockMvc.perform(post("/api/projects/1/issues")
-                .cookie(new Cookie("memberId", "3"))
+                .cookie(new Cookie("jwt", "token"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(issueDTO2)))
                 .andExpect(status().isCreated());
@@ -160,10 +173,11 @@ public class IssueControllerTest {
 
     @Test
     public void testCreateIssue_Failure() throws Exception {
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(3L);
         issueDTO2.setTitle("");
 
         mockMvc.perform(post("/api/projects/1/issues")
-                .cookie(new Cookie("memberId", "3"))
+                .cookie(new Cookie("jwt", "token"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(issueDTO2)))
                 .andExpect(status().isBadRequest());
@@ -192,18 +206,13 @@ public class IssueControllerTest {
         issueDTO1.setStatus(IssueDTO.Status.ASSIGNED);
         issueDTO1.setPriority(IssueDTO.Priority.MINOR);
 
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(1L);
         when(issueService.updateIssue(1L, issue2, 1L)).thenReturn(issue1);
-        
-        // when(modelMapper.map(issueDTO1, Issue.class)).thenReturn(issue1);
-        // when(modelMapper.map(issue1, IssueDTO.class)).thenReturn(issueDTO1);
-        // when(modelMapper.map(issueDTO2, Issue.class)).thenReturn(issue2);
-        // when(modelMapper.map(issue2, IssueDTO.class)).thenReturn(issueDTO2);
-
         when(modelMapper.map(any(IssueDTO.class), eq(Issue.class))).thenReturn(issue2, issue1);
         when(modelMapper.map(any(Issue.class), eq(IssueDTO.class))).thenReturn(issueDTO1);
 
         mockMvc.perform(put("/api/projects/1/issues/1")
-                .cookie(new Cookie("memberId", "1"))
+                .cookie(new Cookie("jwt", "token"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(issueDTO2)))
                 .andExpect(status().isOk())
@@ -213,31 +222,27 @@ public class IssueControllerTest {
 
     @Test
     public void testSearchIssues() throws Exception {
+        issue1.setReporter(tester);
+        issue2.setReporter(tester);
         issue1.setAssignee(dev);
         issue2.setAssignee(dev);
-        
+        issue1.setStatus(Issue.Status.ASSIGNED);
+        issue2.setStatus(Issue.Status.ASSIGNED);
 
         List<Issue> issues = new ArrayList<>();
         issues.add(issue1);
         issues.add(issue2);
-        List<IssueDTO> issueDTOs = new ArrayList<>();
-        issueDTOs.add(issueDTO1);
-        issueDTOs.add(issueDTO2);
 
-        IssueDTO issueData = new IssueDTO();
-        issueData.setAssigneeUsername("dev");
-
-        Issue searchData = new Issue();
-        searchData.setAssignee(dev);
-
-        when(modelMapper.map(any(IssueDTO.class), eq(Issue.class))).thenReturn(searchData);
-        when(issueService.searchIssues(1L, searchData, 3L)).thenReturn(issues);
-        when(modelMapper.map(any(Issue.class), eq(IssueDTO.class))).thenReturn(issueDTOs.get(0), issueDTOs.get(1));
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(3L);
+        when(issueService.searchIssues(1L, dev.getUsername(), tester.getUsername(), Issue.Status.ASSIGNED, 3L)).thenReturn(issues);
+        when(modelMapper.map(any(Issue.class), eq(IssueDTO.class))).thenReturn(issueDTO1, issueDTO2);
 
         mockMvc.perform(get("/api/projects/1/issues/search")
-                .cookie(new Cookie("memberId", "3"))
+                .cookie(new Cookie("jwt", "token"))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(issueData)))
+                .param("assigneeUsername", "dev")
+                .param("reporterUsername", "tester")
+                .param("status", "ASSIGNED"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].title").value(issueDTO1.getTitle()));
     }
@@ -260,21 +265,20 @@ public class IssueControllerTest {
     @Test
     public void testGetRecommendedAssignees() throws Exception {
 
-        UserDTO devDTO = new UserDTO();
+        UserResponseDTO devDTO = new UserResponseDTO();
         devDTO.setUsername("dev");
-        devDTO.setPassword("dev");
-        devDTO.setRole(UserDTO.Role.DEV);
+        devDTO.setRole(UserResponseDTO.Role.DEV);
 
         List<User> recommendedAssignees = new ArrayList<>();
         recommendedAssignees.add(dev);
-        List<UserDTO> userDTOs = new ArrayList<>();
-        userDTOs.add(devDTO);
+        List<UserResponseDTO> userResponseDTOs = new ArrayList<>();
+        userResponseDTOs.add(devDTO);
 
-        when(issueService.getRecommendedAssignees(1L, 3L)).thenReturn(recommendedAssignees);
-        when(modelMapper.map(any(User.class), eq(UserDTO.class))).thenReturn(userDTOs.get(0));
+        when(issueService.getRecommendedAssignees(3L)).thenReturn(recommendedAssignees);
+        when(modelMapper.map(any(User.class), eq(UserResponseDTO.class))).thenReturn(userResponseDTOs.get(0));
 
         mockMvc.perform(get("/api/projects/1/issues/3/recommendedAssignees"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].username").value(userDTOs.get(0).getUsername()));
+                .andExpect(jsonPath("$[0].username").value(userResponseDTOs.get(0).getUsername()));
     }
 }

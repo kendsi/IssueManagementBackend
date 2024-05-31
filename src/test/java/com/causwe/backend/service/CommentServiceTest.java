@@ -1,7 +1,10 @@
 package com.causwe.backend.service;
 
+import com.causwe.backend.exceptions.CommentNotFoundException;
 import com.causwe.backend.exceptions.UnauthorizedException;
+import com.causwe.backend.model.Admin;
 import com.causwe.backend.model.Comment;
+import com.causwe.backend.model.Developer;
 import com.causwe.backend.model.Issue;
 import com.causwe.backend.model.User;
 import com.causwe.backend.repository.CommentRepository;
@@ -19,6 +22,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 public class CommentServiceTest {
@@ -45,10 +49,14 @@ public class CommentServiceTest {
     public void setUp() {
         MockitoAnnotations.openMocks(this);
 
-        admin = new User("admin", "admin", User.Role.ADMIN);
+        admin = new Admin();
+        admin.setUsername("admin");
+        admin.setPassword("admin");
         admin.setId(1L);
 
-        dev = new User("dev", "dev", User.Role.DEV);
+        dev = new Developer();
+        dev.setUsername("dev");
+        dev.setPassword("dev");
         dev.setId(2L);
 
         issue = new Issue();
@@ -124,9 +132,9 @@ public class CommentServiceTest {
         when(userService.getUserById(2L)).thenReturn(dev);
         when(commentRepository.findById(1L)).thenReturn(Optional.of(comment1));
 
-        boolean result = commentService.deleteComment(1L, 2L);
-        assertFalse(result);
-        verify(commentRepository, never()).deleteById(1L);
+        assertThrows(UnauthorizedException.class, () -> {
+            commentService.deleteComment(1L, 2L);
+        });
     }
 
     @Test
@@ -164,7 +172,8 @@ public class CommentServiceTest {
         when(userService.getUserById(2L)).thenReturn(dev);
         when(commentRepository.findById(2L)).thenReturn(Optional.empty());
 
-        Comment result = commentService.updateComment(2L, updatedData, 2L);
-        assertNull(result);
+        assertThrows(CommentNotFoundException.class, () -> {
+            commentService.updateComment(1L, updatedData, 2L);
+        });
     }
 }
