@@ -49,10 +49,7 @@ public class CommentController {
     }
 
     @PostMapping("")
-    @Caching(evict = {
-            @CacheEvict(value = "comments", key = "#issueId"),
-            @CacheEvict(value = "issuesOrderByComments", key = "#projectId")
-    })
+    @CacheEvict(value = {"comments", "issuesOrderByComments"}, allEntries = true)
     public ResponseEntity<CommentDTO> addComment(@PathVariable Long issueId, @RequestBody CommentDTO commentData, @CookieValue(name = "jwt", required = false) String token) {
         if (Objects.equals(commentData.getContent(), "")) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
@@ -92,10 +89,7 @@ public class CommentController {
     }
 
     @DeleteMapping("/{id}")
-    @Caching(evict = {
-            @CacheEvict(value = "comments", key = "#issueId"),
-            @CacheEvict(value = "issuesOrderByComments", key = "#projectId")
-    })
+    @CacheEvict(value = {"comments", "issuesOrderByComments"}, allEntries = true)
     public ResponseEntity<Void> deleteComment(@PathVariable Long issueId, @PathVariable Long id, @CookieValue(name = "jwt", required = false) String token) {
         try {
             Long memberId = jwtTokenProvider.getUserIdFromToken(token);
