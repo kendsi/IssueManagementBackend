@@ -2,7 +2,9 @@ package com.causwe.backend.controller;
 
 import com.causwe.backend.dto.ProjectDTO;
 import com.causwe.backend.exceptions.GlobalExceptionHandler;
+import com.causwe.backend.exceptions.ProjectNotFoundException;
 import com.causwe.backend.model.Project;
+import com.causwe.backend.security.JwtTokenProvider;
 import com.causwe.backend.service.ProjectService;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,18 +18,15 @@ import org.mockito.MockitoAnnotations;
 import org.modelmapper.ModelMapper;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.web.context.WebApplicationContext;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 
 import static org.mockito.Mockito.when;
@@ -49,6 +48,9 @@ public class ProjectControllerTest {
 
     @Mock
     private ModelMapper modelMapper;
+
+    @Mock
+    private JwtTokenProvider jwtTokenProvider;
 
     @InjectMocks
     private ProjectController projectController;
@@ -76,12 +78,13 @@ public class ProjectControllerTest {
 
     @Test
     public void testCreateProject_Success() throws Exception {
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(1L);
         when(modelMapper.map(any(ProjectDTO.class), eq(Project.class))).thenReturn(project);
         when(modelMapper.map(any(Project.class), eq(ProjectDTO.class))).thenReturn(projectDTO);
         when(projectService.createProject(project, 1L)).thenReturn(project);
 
         mockMvc.perform(post("/api/projects")
-                .cookie(new Cookie("memberId", "1"))
+                .cookie(new Cookie("jwt", "token"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(projectDTO)))
                 .andExpect(status().isCreated())
@@ -90,10 +93,11 @@ public class ProjectControllerTest {
 
     @Test
     public void testCreateProject_BadRequest() throws Exception {
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(3L);
         projectDTO.setName("");
 
         mockMvc.perform(post("/api/projects")
-                .cookie(new Cookie("memberId", "1"))
+                .cookie(new Cookie("jwt", "token"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(projectDTO)))
                 .andExpect(status().isBadRequest());
@@ -137,7 +141,7 @@ public class ProjectControllerTest {
 
     @Test
     public void testGetProjectById_NotFound() throws Exception {
-        when(projectService.getProjectById(1L)).thenReturn(null);
+        when(projectService.getProjectById(1L)).thenThrow(new ProjectNotFoundException(1L));
 
         mockMvc.perform(get("/api/projects/1"))
                 .andExpect(status().isNotFound());
@@ -145,19 +149,21 @@ public class ProjectControllerTest {
 
     @Test
     public void testDeleteProject_Success() throws Exception {
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(1L);
         when(projectService.deleteProject(1L, 1L)).thenReturn(true);
 
         mockMvc.perform(delete("/api/projects/1")
-                .cookie(new Cookie("memberId", "1")))
+                .cookie(new Cookie("jwt", "token")))
                 .andExpect(status().isNoContent());
     }
 
     @Test
     public void testDeleteProject_NotFound() throws Exception {
-        when(projectService.deleteProject(2L, 1L)).thenReturn(false);
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(1L);
+        when(projectService.deleteProject(1L, 1L)).thenThrow(new ProjectNotFoundException(1L));
 
-        mockMvc.perform(delete("/api/projects/2")
-                .cookie(new Cookie("memberId", "1")))
+        mockMvc.perform(delete("/api/projects/1")
+                .cookie(new Cookie("jwt", "token")))
                 .andExpect(status().isNotFound());
     }
 }

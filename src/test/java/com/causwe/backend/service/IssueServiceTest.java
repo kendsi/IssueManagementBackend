@@ -1,8 +1,12 @@
 package com.causwe.backend.service;
 
+import com.causwe.backend.exceptions.IssueNotFoundException;
 import com.causwe.backend.exceptions.UnauthorizedException;
+import com.causwe.backend.model.Admin;
+import com.causwe.backend.model.Developer;
 import com.causwe.backend.model.Issue;
 import com.causwe.backend.model.Project;
+import com.causwe.backend.model.Tester;
 import com.causwe.backend.model.User;
 import com.causwe.backend.repository.IssueRepository;
 
@@ -53,14 +57,20 @@ public class IssueServiceTest {
     public void setUp() {
         MockitoAnnotations.openMocks(this);
 
-        admin = new User("admin", "admin", User.Role.ADMIN);
+        admin = new Admin();
+        admin.setUsername("admin");
+        admin.setPassword("admin");
         admin.setId(1L);
 
-        dev = new User("dev", "dev", User.Role.DEV);
+        dev = new Developer();
+        dev.setUsername("dev");
+        dev.setPassword("dev");
         dev.setId(2L);
 
-        tester = new User("tester", "tester", User.Role.TESTER);
-        dev.setId(3L);
+        tester = new Tester();
+        tester.setUsername("tester");
+        tester.setPassword("tester");
+        tester.setId(3L);
 
         project = new Project();
         project.setId(1L);
@@ -103,9 +113,9 @@ public class IssueServiceTest {
     public void testGetIssueById_NotFound() {
         when(issueRepository.findById(3L)).thenReturn(Optional.empty());
 
-        Issue foundIssue = issueService.getIssueById(3L);
-
-        assertNull(foundIssue);
+        assertThrows(IssueNotFoundException.class, () -> {
+            issueService.getIssueById(3L);
+        });
     }
 
     @Test
@@ -160,17 +170,22 @@ public class IssueServiceTest {
 
     @Test
     public void testSearchIssues() {
+        issue1.setReporter(tester);
+        issue2.setReporter(tester);
         issue1.setAssignee(dev);
         issue2.setAssignee(dev);
+        issue1.setStatus(Issue.Status.ASSIGNED);
+        issue2.setStatus(Issue.Status.ASSIGNED);
 
         List<Issue> issues = new ArrayList<>();
         issues.add(issue1);
         issues.add(issue2);
 
         when(projectService.getProjectById(1L)).thenReturn(project);
+        when(userService.getUserByUsername("dev")).thenReturn(dev);
         when(issueRepository.findByProjectAndAssigneeOrderByIdDesc(project, dev)).thenReturn(issues);
 
-        List<Issue> result = issueService.searchIssues(1L, issue1, 1L);
+        List<Issue> result = issueService.searchIssues(1L, issue1.getAssignee().getUsername(), issue1.getReporter().getUsername(), issue1.getStatus(), 1L);
 
         assertNotNull(result);
         assertEquals(2, result.size());
@@ -208,9 +223,14 @@ public class IssueServiceTest {
 
     @Test
     public void testGetRecommendedAssignees() {
-        User dev2 = new User("dev2", "dev2", User.Role.DEV);
+        User dev2 = new Developer();
+        dev2.setUsername("dev2");
+        dev2.setPassword("dev2");
         dev2.setId(4L);
-        User dev3 = new User("dev3", "dev3", User.Role.DEV);
+
+        User dev3 = new Developer();
+        dev3.setUsername("dev3");
+        dev3.setPassword("dev3");
         dev3.setId(5L);
 
         List<User> recommendedAssignees = new ArrayList<>();
@@ -228,13 +248,14 @@ public class IssueServiceTest {
         Issue newIssue = new Issue("New Issue", "Issue Description", tester);
         newIssue.setId(3L);
 
+        when(issueRepository.existsById(3L)).thenReturn(true);
         when(issueRepository.findById(3L)).thenReturn(Optional.of(newIssue));
-        when(issueRepository.findRecommendedAssigneesByProjectId(1L, 3L)).thenReturn(assigneeIds);
-        when(userService.getUserById(3L)).thenReturn(dev);
+        when(issueRepository.findRecommendedAssigneesByIssueId(3L)).thenReturn(assigneeIds);
+        when(userService.getUserById(2L)).thenReturn(dev);
         when(userService.getUserById(4L)).thenReturn(dev2);
         when(userService.getUserById(5L)).thenReturn(dev3);
 
-        List<User> result = issueService.getRecommendedAssignees(1L, 3L);
+        List<User> result = issueService.getRecommendedAssignees(3L);
 
         assertNotNull(result);
         assertEquals(3, result.size());
