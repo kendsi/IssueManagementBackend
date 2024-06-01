@@ -65,7 +65,7 @@ public class IssueController {
     }
 
     @PostMapping("")
-    @CacheEvict(value = {"issuesPerMonth", "issues", "issuesBySearch", "issuesByNLSearch"}, allEntries = true)
+    @CacheEvict(value = {"issues", "issuesBySearch", "issuesByNLSearch", "issuesPerStatus", "issueStatusCounts", "issuesPerFixer", "issuesPerDayAndStatusInWeek", "issuesOrderByComments", "issuesPerDayInMonth", "issuesPerDayAndPriorityInWeek", "issuesPerMonth", "issuesPerPriorityInMonth", "getIssuesPerDayAndStatusInWeek"}, allEntries = true)
     public ResponseEntity<IssueDTO> createIssue(@PathVariable Long projectId, @RequestBody IssueDTO issueData, @CookieValue(name = "jwt", required = false) String token) {
         if (Objects.equals(issueData.getTitle(), "")) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
@@ -84,7 +84,7 @@ public class IssueController {
     }
 
     @PutMapping("/{id}")
-    @CacheEvict(value = {"issues", "issuesBySearch", "issuesByNLSearch", "issue_recommendedAssignees"}, allEntries = true)
+    @CacheEvict(value = {"issues", "issuesBySearch", "issuesByNLSearch", "issue_recommendedAssignees", "issuesPerStatus", "issueStatusCounts", "issuesPerFixer", "issuesPerDayAndStatusInWeek", "issuesPerDayAndPriorityInWeek", "issuesPerPriorityInMonth", "getIssuesPerDayAndStatusInWeek"}, allEntries = true)
     public ResponseEntity<IssueDTO> updateIssue(@PathVariable Long id, @RequestBody IssueDTO updatedIssue, @CookieValue(name = "jwt", required = false) String token) {
         if (Objects.equals(updatedIssue.getTitle(), "")) {
             return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
