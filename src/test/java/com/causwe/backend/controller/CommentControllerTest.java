@@ -1,10 +1,13 @@
 package com.causwe.backend.controller;
 
 import com.causwe.backend.dto.CommentDTO;
+import com.causwe.backend.exceptions.CommentNotFoundException;
 import com.causwe.backend.exceptions.GlobalExceptionHandler;
 import com.causwe.backend.model.Comment;
 import com.causwe.backend.model.Issue;
+import com.causwe.backend.model.Tester;
 import com.causwe.backend.model.User;
+import com.causwe.backend.security.JwtTokenProvider;
 import com.causwe.backend.service.CommentService;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -47,6 +50,9 @@ public class CommentControllerTest {
     @Mock
     private ModelMapper modelMapper;
 
+    @Mock
+    private JwtTokenProvider jwtTokenProvider;
+
     @InjectMocks
     private CommentController commentController;
 
@@ -64,7 +70,9 @@ public class CommentControllerTest {
         
         objectMapper = new ObjectMapper();
 
-        tester = new User("tester", "tester", User.Role.TESTER);
+        tester = new Tester();
+        tester.setUsername("tester");
+        tester.setPassword("tester");
         tester.setId(3L);
 
         issue = new Issue("Test Issue1", "Issue Description", tester);
@@ -97,15 +105,15 @@ public class CommentControllerTest {
     @Test
     public void testAddComment_Success() throws Exception {
 
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(3L);
         when(modelMapper.map(any(CommentDTO.class), eq(Comment.class))).thenReturn(comment);
         when(modelMapper.map(comment, CommentDTO.class)).thenReturn(commentDTO);
-
         when(commentService.addComment(1L, comment, 3L)).thenReturn(comment);
 
         mockMvc.perform(post("/api/projects/1/issues/1/comments")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(commentDTO))
-                .cookie(new Cookie("memberId", "3")))
+                .cookie(new Cookie("jwt", "token")))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(comment.getId().intValue()))
                 .andExpect(jsonPath("$.content").value(comment.getContent()));
@@ -118,7 +126,7 @@ public class CommentControllerTest {
         mockMvc.perform(post("/api/projects/1/issues/1/comments")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(commentDTO))
-                .cookie(new Cookie("memberId", "3")))
+                .cookie(new Cookie("jwt", "token")))
                 .andExpect(status().isBadRequest());
     }
 
@@ -127,6 +135,7 @@ public class CommentControllerTest {
         commentDTO.setContent("Updated Comment");
         comment.setContent("Updated Comment");
 
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(3L);
         when(modelMapper.map(any(CommentDTO.class), eq(Comment.class))).thenReturn(comment);
         when(modelMapper.map(any(Comment.class), eq(CommentDTO.class))).thenReturn(commentDTO);
 
@@ -135,7 +144,7 @@ public class CommentControllerTest {
         mockMvc.perform(put("/api/projects/1/issues/1/comments/1")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(commentDTO))
-                .cookie(new Cookie("memberId", "3")))
+                .cookie(new Cookie("jwt", "token")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(comment.getId().intValue()))
                 .andExpect(jsonPath("$.content").value(comment.getContent()));
@@ -143,30 +152,34 @@ public class CommentControllerTest {
 
     @Test
     public void testUpdateComment_NotFound() throws Exception {
-        when(commentService.updateComment(1L, comment, 3L)).thenReturn(null);
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(3L);
+        when(modelMapper.map(any(CommentDTO.class), eq(Comment.class))).thenReturn(comment);
+        when(commentService.updateComment(1L, comment, 3L)).thenThrow(new CommentNotFoundException(1L));
 
         mockMvc.perform(put("/api/projects/1/issues/1/comments/1")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(commentDTO))
-                .cookie(new Cookie("memberId", "3")))
+                .cookie(new Cookie("jwt", "token")))
                 .andExpect(status().isNotFound());
     }
 
     @Test
     public void testDeleteComment_Success() throws Exception {
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(3L);
         when(commentService.deleteComment(1L, 3L)).thenReturn(true);
 
         mockMvc.perform(delete("/api/projects/1/issues/1/comments/1")
-                .cookie(new Cookie("memberId", "3")))
+                .cookie(new Cookie("memberId", "token")))
                 .andExpect(status().isNoContent());
     }
 
     @Test
     public void testDeleteComment_NotFound() throws Exception {
-        when(commentService.deleteComment(1L, 3L)).thenReturn(false);
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(3L);
+        when(commentService.deleteComment(1L, 3L)).thenThrow(new CommentNotFoundException(1L));
 
         mockMvc.perform(delete("/api/projects/1/issues/1/comments/1")
-                .cookie(new Cookie("memberId", "3")))
+                .cookie(new Cookie("jwt", "token")))
                 .andExpect(status().isNotFound());
     }
 }

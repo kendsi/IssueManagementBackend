@@ -1,10 +1,16 @@
 package com.causwe.backend.controller;
 
-import com.causwe.backend.dto.UserDTO;
+import com.causwe.backend.dto.UserRequestDTO;
+import com.causwe.backend.dto.UserResponseDTO;
 import com.causwe.backend.exceptions.GlobalExceptionHandler;
 import com.causwe.backend.exceptions.UnauthorizedException;
+import com.causwe.backend.model.Admin;
+import com.causwe.backend.model.Developer;
+import com.causwe.backend.model.Tester;
 import com.causwe.backend.model.User;
+import com.causwe.backend.security.JwtTokenProvider;
 import com.causwe.backend.service.UserService;
+import com.causwe.backend.util.RoleConverter;
 
 import jakarta.servlet.http.Cookie;
 
@@ -38,6 +44,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 @AutoConfigureMockMvc
 public class UserControllerTest {
@@ -54,12 +61,16 @@ public class UserControllerTest {
     @Mock
     private ModelMapper modelMapper;
 
+    @Mock
+    private JwtTokenProvider jwtTokenProvider;
+
     @InjectMocks
     private UserController userController;
 
     private User admin;
-    private User user;
-    private UserDTO userDTO;
+    private User dev;
+    private UserRequestDTO userRequestDTO;
+    private UserResponseDTO userResponseDTO;
 
     @BeforeEach
     public void setUp() {
@@ -70,111 +81,118 @@ public class UserControllerTest {
 
         objectMapper = new ObjectMapper();
 
-        admin = new User("admin", "admin", User.Role.ADMIN);
+        admin = new Admin();
+        admin.setUsername("admin");
+        admin.setPassword("admin");
         admin.setId(1L);
 
-        user = new User("testUser", "password", User.Role.DEV);
-        user.setId(2L);
+        dev = new Developer();
+        dev.setUsername("dev");
+        dev.setPassword("dev");
+        dev.setId(2L);
 
-        userDTO = new UserDTO();
-        userDTO.setUsername("testUser");
-        userDTO.setPassword("password");
-        userDTO.setRole(UserDTO.Role.DEV);
+        userRequestDTO = new UserRequestDTO();
+        userRequestDTO.setUsername("dev");
+        userRequestDTO.setPassword("dev");
+        userRequestDTO.setRole(UserRequestDTO.Role.DEV);
+
+        userResponseDTO = new UserResponseDTO();
+        userResponseDTO.setUsername("dev");
+        userResponseDTO.setRole(UserResponseDTO.Role.DEV);        
     }
 
     @Test
     public void testCreateUser_Success() throws Exception {
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(1L);
         when(userService.getUserById(1L)).thenReturn(admin);
-        when(userService.createUser(user)).thenReturn(user);
-        when(modelMapper.map(user, UserDTO.class)).thenReturn(userDTO);
-        when(modelMapper.map(any(UserDTO.class), eq(User.class))).thenReturn(user);
+        when(userService.createUser(
+            userRequestDTO.getUsername(), 
+            userRequestDTO.getPassword(), 
+            RoleConverter.convertToUserRole(userRequestDTO.getRole()))
+        ).thenReturn(dev);
+        when(modelMapper.map(dev, UserResponseDTO.class)).thenReturn(userResponseDTO);
 
         mockMvc.perform(
             post("/api/users/signup")
-                .cookie(new Cookie("memberId", "1"))
+                .cookie(new Cookie("jwt", "token"))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(userDTO)))
+                .content(objectMapper.writeValueAsString(userRequestDTO)))
                 .andExpect(status().isCreated())
-                .andExpect(content().json("{\"username\":\"testUser\"}"));
+                .andExpect(content().json("{\"username\":\"dev\"}"));
     }
 
     @Test
     public void testCreateUser_Unauthorized() throws Exception {
-        when(userService.getUserById(anyLong())).thenReturn(user);
-        when(modelMapper.map(any(UserDTO.class), eq(User.class))).thenReturn(user);
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(2L);
+        when(userService.getUserById(2L)).thenReturn(dev);
 
         mockMvc.perform(
             post("/api/users/signup")
-                .cookie(new Cookie("memberId", "5"))
+                .cookie(new Cookie("jwt", "token"))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(userDTO)))
-                .andExpect(result -> assertTrue(result.getResolvedException() instanceof UnauthorizedException))
+                .content(objectMapper.writeValueAsString(userRequestDTO)))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     public void testCreateUser_InvalidInput() throws Exception {
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(1L);
         when(userService.getUserById(1L)).thenReturn(admin);
-        when(modelMapper.map(any(UserDTO.class), eq(User.class))).thenReturn(user);
-        userDTO.setUsername("");
+        userRequestDTO.setUsername("");
 
         mockMvc.perform(
             post("/api/users/signup")
-                .cookie(new Cookie("memberId", "1"))
+                .cookie(new Cookie("jwt", "token"))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(userDTO)))
+                .content(objectMapper.writeValueAsString(userRequestDTO)))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     public void testLogin_Success() throws Exception {
-        Map<String, Object> responseBody = new HashMap<>();
-        responseBody.put("user", user);
-        responseBody.put("memberId", user.getId());
-
-        when(modelMapper.map(any(UserDTO.class), eq(User.class))).thenReturn(user);
-        when(userService.login(user)).thenReturn(responseBody);
+        when(userService.login(userRequestDTO.getUsername(), userRequestDTO.getPassword())).thenReturn(dev);
+        when(modelMapper.map(dev, UserResponseDTO.class)).thenReturn(userResponseDTO);
 
         mockMvc.perform(
             post("/api/users/login")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(userDTO)))
+                .content(objectMapper.writeValueAsString(userRequestDTO)))
                 .andExpect(status().isOk());
     }
 
     @Test
     public void testLogin_Failure() throws Exception {
-        when(modelMapper.map(any(UserDTO.class), eq(User.class))).thenReturn(user);
-        when(userService.login(user)).thenReturn(null);
+        when(userService.login(userRequestDTO.getUsername(), userRequestDTO.getPassword())).thenReturn(null);
 
         mockMvc.perform(
             post("/api/users/login")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(userDTO)))
+                .content(objectMapper.writeValueAsString(userRequestDTO)))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     public void testGetAllDevs() throws Exception {
-        User user2 = new User("testUser2", "password", User.Role.DEV);
-        user2.setId(3L);
+        User dev2 = new Developer();
+        dev2.setUsername("dev2");
+        dev2.setPassword("dev2");
+        dev2.setId(3L);
 
-        UserDTO user2DTO = new UserDTO();
-        user2DTO.setUsername("testUser2");
-        user2DTO.setPassword("password");
-        user2DTO.setRole(UserDTO.Role.DEV);
+        UserResponseDTO dev2ResponseDTO = new UserResponseDTO();
+        dev2ResponseDTO.setUsername("testUser2");
+        dev2ResponseDTO.setRole(UserResponseDTO.Role.DEV);
 
         List<User> devUsers = new ArrayList<>();
-        devUsers.add(user);
-        devUsers.add(user2);
+        devUsers.add(dev);
+        devUsers.add(dev2);
 
         when(userService.getAllDevs()).thenReturn(devUsers);
-        when(modelMapper.map(userDTO, User.class)).thenReturn(user);
-        when(modelMapper.map(user2DTO, User.class)).thenReturn(user2);
+        when(modelMapper.map(any(User.class), eq(UserResponseDTO.class))).thenReturn(userResponseDTO, dev2ResponseDTO);
 
         mockMvc.perform(
             get("/api/users/devs")
                 .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].username").value(dev.getUsername()));
     }
 }

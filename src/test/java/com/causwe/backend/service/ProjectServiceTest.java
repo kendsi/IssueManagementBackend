@@ -2,7 +2,11 @@ package com.causwe.backend.service;
 
 import com.causwe.backend.exceptions.UnauthorizedException;
 import com.causwe.backend.exceptions.ProjectNotFoundException;
+import com.causwe.backend.model.Admin;
+import com.causwe.backend.model.Developer;
 import com.causwe.backend.model.Project;
+import com.causwe.backend.model.ProjectLead;
+import com.causwe.backend.model.Tester;
 import com.causwe.backend.model.User;
 import com.causwe.backend.repository.ProjectRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,13 +42,19 @@ public class ProjectServiceTest {
 
     @BeforeEach
     public void setUp() {
-        admin = new User("admin", "admin", User.Role.ADMIN);
+        admin = new Admin();
+        admin.setUsername("admin");
+        admin.setPassword("admin");
         admin.setId(1L);
-        
-        pl = new User("pl", "pl", User.Role.PL);
+
+        pl = new ProjectLead();
+        pl.setUsername("tester");
+        pl.setPassword("tester");
         pl.setId(2L);
 
-        dev = new User("dev", "dev", User.Role.DEV);
+        dev = new Developer();
+        dev.setUsername("dev");
+        dev.setPassword("dev");
         dev.setId(3L);
 
         project = new Project();
@@ -54,20 +64,20 @@ public class ProjectServiceTest {
 
     @Test
     public void testCreateProject_Success() {
-        when(userService.getUserById(2L)).thenReturn(pl);
+        when(userService.getUserById(1L)).thenReturn(admin);
         when(projectRepository.save(project)).thenReturn(project);
 
-        Project createdProject = projectService.createProject(project, 2L);
+        Project createdProject = projectService.createProject(project, 1L);
         assertNotNull(createdProject);
         assertEquals("Test Project", createdProject.getName());
     }
 
     @Test
     public void testCreateProject_Unauthorized() {
-        when(userService.getUserById(4L)).thenReturn(null);
+        when(userService.getUserById(3L)).thenReturn(dev);
 
         assertThrows(UnauthorizedException.class, () -> {
-            projectService.createProject(project, 4L);
+            projectService.createProject(project, 3L);
         });
     }
 
@@ -107,7 +117,7 @@ public class ProjectServiceTest {
     @Test
     public void testDeleteProject_Success() {
         when(userService.getUserById(1L)).thenReturn(admin);
-        when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
+        when(projectRepository.existsById(1L)).thenReturn(true);
 
         boolean result = projectService.deleteProject(1L, 1L);
         assertTrue(result);
@@ -117,21 +127,20 @@ public class ProjectServiceTest {
     @Test
     public void testDeleteProject_Unauthorized() {
         when(userService.getUserById(2L)).thenReturn(dev);
-        when(projectRepository.findById(1L)).thenReturn(Optional.of(project));
 
-        boolean result = projectService.deleteProject(1L, 2L);
-        assertFalse(result);
-        verify(projectRepository, never()).deleteById(1L);
+        assertThrows(UnauthorizedException.class, () -> {
+            projectService.deleteProject(1L, 2L);
+        });
     }
 
     @Test
     public void testDeleteProject_NotFound() {
         when(userService.getUserById(1L)).thenReturn(admin);
-        when(projectRepository.findById(1L)).thenReturn(Optional.empty());
+        when(projectRepository.existsById(1L)).thenReturn(false);
 
-        boolean result = projectService.deleteProject(1L, 1L);
-        assertFalse(result);
-        verify(projectRepository, never()).deleteById(1L);
+        assertThrows(ProjectNotFoundException.class, () -> {
+            projectService.deleteProject(1L, 1L);
+        });
     }
 
     @Test

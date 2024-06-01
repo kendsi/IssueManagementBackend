@@ -1,5 +1,6 @@
 package com.causwe.backend.service;
 
+import com.causwe.backend.model.Developer;
 import com.causwe.backend.model.User;
 import com.causwe.backend.repository.UserRepository;
 
@@ -9,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,6 +20,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 public class UserServiceTest {
@@ -25,26 +28,32 @@ public class UserServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private BCryptPasswordEncoder passwordEncoder;
+
     @InjectMocks
     private UserServiceImpl userService;
 
-    private User user;
+    private User dev;
 
     @BeforeEach
     public void setUp() {
         MockitoAnnotations.openMocks(this);
-        user = new User("testUser", "password", User.Role.DEV);
-        user.setId(1L);
+
+        dev = new Developer();
+        dev.setUsername("dev");
+        dev.setPassword("dev");
+        dev.setId(1L);
     }
 
     @Test
     public void testGetUserById_Success() {
-        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(dev));
 
         User foundUser = userService.getUserById(1L);
 
         assertNotNull(foundUser);
-        assertEquals("testUser", foundUser.getUsername());
+        assertEquals("dev", foundUser.getUsername());
     }
 
     @Test
@@ -57,63 +66,68 @@ public class UserServiceTest {
 
     @Test
     public void testGetUserByUsername_Success() {
-        when(userRepository.findByUsername("testUser")).thenReturn(user);
+        when(userRepository.findByUsername("dev")).thenReturn(dev);
         
-        User foundUser = userService.getUserByUsername("testUser");
+        User foundUser = userService.getUserByUsername("dev");
         assertNotNull(foundUser);
-        assertEquals("testUser", foundUser.getUsername());
+        assertEquals("dev", foundUser.getUsername());
     }
 
     @Test
     public void testGetUserByUsername_NotFound() {
-        when(userRepository.findByUsername("testUser")).thenReturn(null);
+        when(userRepository.findByUsername("dev")).thenReturn(null);
         
-        User foundUser = userService.getUserByUsername("testUser");
+        User foundUser = userService.getUserByUsername("dev");
         assertNull(foundUser);
     }
 
     @Test
     public void testCreateUser_Success() {
-        when(userRepository.findByUsername("testUser")).thenReturn(null);
-        when(userRepository.save(user)).thenReturn(user);
+        when(userRepository.findByUsername("dev")).thenReturn(null);
+        when(userRepository.save(any(User.class))).thenReturn(dev);
+        when(passwordEncoder.encode(dev.getPassword())).thenReturn("encodedPassword");
 
-        User createdUser = userService.createUser(user);
+        User createdUser = userService.createUser(dev.getUsername(), dev.getPassword(), dev.getRole());
         assertNotNull(createdUser);
-        assertEquals("testUser", createdUser.getUsername());
+        assertEquals("dev", createdUser.getUsername());
     }
 
     @Test
     public void testCreateUser_UserAlreadyExists() {
-        when(userRepository.findByUsername("testUser")).thenReturn(user);
-        when(userRepository.save(user)).thenReturn(null);
+        when(userRepository.findByUsername("dev")).thenReturn(dev);
 
-        User createdUser = userService.createUser(user);
+        User createdUser = userService.createUser(dev.getUsername(), dev.getPassword(), dev.getRole());
         assertNull(createdUser);
     }
 
     @Test
     public void testLogin_Success() {
-        when(userRepository.findByUsername("testUser")).thenReturn(user);
+        when(userRepository.findByUsername("dev")).thenReturn(dev);
+        when(passwordEncoder.matches("dev", dev.getPassword())).thenReturn(true);
         
-        Map<String, Object> loginResponse = userService.login(user);
+        User loginResponse = userService.login(dev.getUsername(), dev.getPassword());
         assertNotNull(loginResponse);
-        assertEquals(user.getId(), loginResponse.get("memberId"));
+        assertEquals(dev.getId(), loginResponse.getId());
     }
 
     @Test
     public void testLogin_Failure() {
-        when(userRepository.findByUsername("testUser")).thenReturn(null);
+        when(userRepository.findByUsername("dev")).thenReturn(null);
 
-        Map<String, Object> loginResponse = userService.login(user);
+        User loginResponse = userService.login(dev.getUsername(), dev.getPassword());
         assertNull(loginResponse);
     }
 
     @Test
     public void testGetAllDevs() {
-        User user2 = new User("devUser", "password", User.Role.DEV);
+        User dev2 = new Developer();
+        dev2.setUsername("dev2");
+        dev2.setPassword("dev2");
+        dev2.setId(2L);
+
         List<User> users = new ArrayList<>();
-        users.add(user);
-        users.add(user2);
+        users.add(dev);
+        users.add(dev2);
 
         when(userRepository.findAll()).thenReturn(users);
 
