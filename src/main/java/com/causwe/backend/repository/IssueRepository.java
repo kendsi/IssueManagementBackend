@@ -127,9 +127,9 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
 
     @Query(value = "WITH dates AS (" +
             "    SELECT generate_series(" +
-            "        DATE_TRUNC('month', current_date), " +
-            "        DATE_TRUNC('month', current_date) + interval '1 month - 1 day', " +
-            "        CAST('1 day' AS interval) " +
+            "        current_date - interval '29 days', " +
+            "        current_date, " +
+            "        interval '1 day'" +
             "    ) AS day" +
             ") " +
             "SELECT " +
@@ -151,7 +151,7 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
     @Query(value = "SELECT priority, COUNT(*) AS issue_count " +
             "FROM issues " +
             "WHERE project_id = :projectId " +
-            "AND DATE_TRUNC('month', reported_date) = DATE_TRUNC('month', current_date) " +
+            "AND reported_date >= current_date - interval '30 days' " +
             "GROUP BY priority " +
             "ORDER BY priority ASC", nativeQuery = true)
     List<Object[]> findByProjectPerPriorityInMonth(@Param("projectId") Long projectId);
