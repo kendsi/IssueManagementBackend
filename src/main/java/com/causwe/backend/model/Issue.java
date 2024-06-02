@@ -63,12 +63,12 @@ public class Issue {
 
     public Issue() {}
 
-    public Issue(String title, String description, User reporter) {
+    public Issue(String title, String description, Priority priority, User reporter) {
         this.title = title;
         this.description = description;
         this.reporter = reporter;
         this.reportedDate = LocalDateTime.now();
-        this.priority = Priority.MAJOR;
+        this.priority = priority;
         this.status = Status.NEW;
     }
 

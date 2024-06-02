@@ -42,6 +42,17 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
             "ORDER BY status ASC", nativeQuery = true)
     List<Object[]> findByProjectPerStatus(@Param("projectId") Long projectId);
 
+    @Query(value = "SELECT COUNT(*) FROM issues WHERE project_id = :projectId AND status NOT IN ('RESOLVED', 'CLOSED')", nativeQuery = true)
+    Long countRemainingIssues(@Param("projectId") Long projectId);
+
+    @Query(value = "SELECT COUNT(*) FROM issues WHERE project_id = :projectId AND status = :status", nativeQuery = true)
+    Long countByProjectAndStatus(@Param("projectId") Long projectId, @Param("status") String status);
+
+    @Query(value = "SELECT COUNT(*) FROM issues WHERE project_id = :projectId AND assignee_id IS NULL", nativeQuery = true)
+    Long countByProjectAndAssigneeIsNull(@Param("projectId") Long projectId);
+
+    Long countByProjectId(Long projectId);
+
     @Query(value = "WITH dates AS (" +
             "    SELECT generate_series(" +
             "        current_date - interval '6 days', " +
@@ -66,14 +77,19 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
             "    d.day ASC", nativeQuery = true)
     List<Object[]> findIssuesPerDayAndStatusInWeek(@Param("projectId") Long projectId, @Param("status") String status);
 
-    @Query(value = "SELECT u.username as fixer, COUNT(*) AS issue_count " +
+    @Query(value = "SELECT u.username as fixer, " +
+            "CASE " +
+            "    WHEN i.status = 'RESOLVED' THEN 'RESOLVED'" +
+            "    WHEN i.status = 'CLOSED' THEN 'CLOSED'" +
+            "    ELSE 'OTHER' " +
+            "END AS fixer_status, " +
+            "COUNT(*) AS issue_count " +
             "FROM issues i " +
             "JOIN users u ON i.fixer_id = u.id " +
             "WHERE i.project_id = :projectId " +
             "AND i.status in ('RESOLVED', 'CLOSED') " +
-            "GROUP BY fixer " +
-            "ORDER BY issue_count DESC " +
-            "LIMIT 3", nativeQuery = true)
+            "GROUP BY fixer, fixer_status " +
+            "ORDER BY fixer, fixer_status", nativeQuery = true)
     List<Object[]> findByProjectPerFixer(@Param("projectId") Long projectId);
 
     @Query(value = "SELECT i.title , COUNT(*) AS comment_count " +
@@ -111,9 +127,9 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
 
     @Query(value = "WITH dates AS (" +
             "    SELECT generate_series(" +
-            "        DATE_TRUNC('month', current_date), " +
-            "        DATE_TRUNC('month', current_date) + interval '1 month - 1 day', " +
-            "        CAST('1 day' AS interval) " +
+            "        current_date - interval '29 days', " +
+            "        current_date, " +
+            "        interval '1 day'" +
             "    ) AS day" +
             ") " +
             "SELECT " +
@@ -135,10 +151,39 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
     @Query(value = "SELECT priority, COUNT(*) AS issue_count " +
             "FROM issues " +
             "WHERE project_id = :projectId " +
-            "AND DATE_TRUNC('month', reported_date) = DATE_TRUNC('month', current_date) " +
+            "AND reported_date >= current_date - interval '30 days' " +
             "GROUP BY priority " +
             "ORDER BY priority ASC", nativeQuery = true)
     List<Object[]> findByProjectPerPriorityInMonth(@Param("projectId") Long projectId);
+
+    @Query(value = "WITH dates AS (" +
+            "    SELECT generate_series(" +
+            "        current_date - interval '6 days', " +
+            "        current_date, " +
+            "        interval '1 day' " +
+            "    ) AS day" +
+            ") " +
+            "SELECT " +
+            "    TO_CHAR(d.day, 'MM-DD') AS day, " +
+            "    COALESCE(COUNT(CASE WHEN i.status = 'NEW' THEN 1 END), 0) AS \"NEW\", " +
+            "    COALESCE(COUNT(CASE WHEN i.status = 'ASSIGNED' THEN 1 END), 0) AS \"ASSIGNED\", " +
+            "    COALESCE(COUNT(CASE WHEN i.status = 'FIXED' THEN 1 END), 0) AS \"FIXED\", " +
+            "    COALESCE(COUNT(CASE WHEN i.status = 'RESOLVED' THEN 1 END), 0) AS \"RESOLVED\", " +
+            "    COALESCE(COUNT(CASE WHEN i.status = 'CLOSED' THEN 1 END), 0) AS \"CLOSED\", " +
+            "    COALESCE(COUNT(CASE WHEN i.status = 'REOPENED' THEN 1 END), 0) AS \"REOPENED\" " +
+            "FROM " +
+            "    dates d " +
+            "LEFT JOIN " +
+            "    issues i " +
+            "ON " +
+            "    DATE_TRUNC('day', i.reported_date) = d.day " +
+            "    AND i.project_id = :projectId " +
+            "GROUP BY " +
+            "    d.day " +
+            "ORDER BY " +
+            "    d.day ASC", nativeQuery = true)
+    List<Object[]> findIssuesPerDayAndStatusInWeek(@Param("projectId") Long projectId);
+
 
 
     @Modifying
