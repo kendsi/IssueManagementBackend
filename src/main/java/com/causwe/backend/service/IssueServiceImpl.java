@@ -4,6 +4,7 @@ import com.causwe.backend.exceptions.IssueNotFoundException;
 import com.causwe.backend.exceptions.UnauthorizedException;
 import com.causwe.backend.model.*;
 import com.causwe.backend.repository.IssueRepository;
+import lombok.Setter;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -34,9 +35,11 @@ public class IssueServiceImpl implements IssueService {
     private final UserService userService;
     private final OkHttpClient httpClient = new OkHttpClient();
 
+    @Setter
     @PersistenceContext
     private EntityManager entityManager;
 
+    @Setter
     @Autowired
     private CacheManager cacheManager;
 
@@ -49,7 +52,11 @@ public class IssueServiceImpl implements IssueService {
 
     @Override
     public List<Issue> getAllIssues(Long projectId, Long memberId) {
-        return issueRepository.IssuesByProjectAndUser(projectId, memberId);
+        List<Issue> issues = issueRepository.IssuesByProjectAndUser(projectId, memberId);
+        for(Issue issue: issues){
+            issue.setDescription(null);
+        }
+        return issues;
     }
 
     @Override
@@ -74,7 +81,7 @@ public class IssueServiceImpl implements IssueService {
         Issue newIssue = issueRepository.save(issue);
 
         CompletableFuture.runAsync(() ->
-                issueRepository.embedIssueTitle(newIssue.getId(), newIssue.getTitle() + newIssue.getDescription())
+                issueRepository.embedIssueTitle(newIssue.getId(), newIssue.getTitle())
         );
 
         return newIssue;
@@ -96,7 +103,7 @@ public class IssueServiceImpl implements IssueService {
         }
         if(!Objects.equals(originalIssueCopy.getTitle(), issue.getTitle())||!Objects.equals(originalIssueCopy.getDescription(), issue.getDescription())){
             CompletableFuture.runAsync(() ->
-                    issueRepository.embedIssueTitle(issue.getId(), issue.getTitle() + issue.getDescription())
+                    issueRepository.embedIssueTitle(issue.getId(), issue.getTitle())
             );
         }
         return issueRepository.save(issue);
