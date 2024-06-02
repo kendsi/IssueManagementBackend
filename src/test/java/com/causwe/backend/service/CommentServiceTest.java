@@ -74,7 +74,7 @@ public class CommentServiceTest {
     }
 
     @Test
-    public void testGetAllComments_Success() {
+    public void testGetAllComments() {
         List<Comment> commentList = new ArrayList<>();
         commentList.add(comment1);
         commentList.add(comment2);

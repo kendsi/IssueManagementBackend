@@ -3,6 +3,7 @@ package com.causwe.backend.controller;
 import com.causwe.backend.dto.UserRequestDTO;
 import com.causwe.backend.dto.UserResponseDTO;
 import com.causwe.backend.exceptions.GlobalExceptionHandler;
+import com.causwe.backend.exceptions.UserNotFoundException;
 import com.causwe.backend.model.Admin;
 import com.causwe.backend.model.Developer;
 import com.causwe.backend.model.User;
@@ -93,6 +94,29 @@ public class UserControllerTest {
         userResponseDTO = new UserResponseDTO();
         userResponseDTO.setUsername("dev");
         userResponseDTO.setRole(UserResponseDTO.Role.DEV);        
+    }
+
+    @Test
+    public void testGetUserById_Success() throws Exception {
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(2L);
+        when(userService.getUserById(2L)).thenReturn(dev);
+        when(modelMapper.map(dev, UserResponseDTO.class)).thenReturn(userResponseDTO);
+
+        mockMvc.perform(get("/api/users")
+                .cookie(new Cookie("jwt", "token")))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.username").value(dev.getUsername()));
+    }
+
+    @Test
+    public void testGetUserById_NotFound() throws Exception {
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(3L);
+        when(userService.getUserById(3L)).thenThrow(new UserNotFoundException(3L));
+
+        mockMvc.perform(get("/api/users")
+                .cookie(new Cookie("jwt", "token")))
+                .andExpect(status().isNotFound());
     }
 
     @Test

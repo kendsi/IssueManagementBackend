@@ -73,7 +73,7 @@ public class CommentControllerTest {
         
         objectMapper = new ObjectMapper();
 
-        issue = new Issue("Test Issue1", "Issue Description", tester);
+        issue = new Issue("Test Issue1", "Issue Description", Issue.Priority.MAJOR, tester);
         issue.setId(1L);
 
         comment = new Comment(issue, tester, "Test Comment");

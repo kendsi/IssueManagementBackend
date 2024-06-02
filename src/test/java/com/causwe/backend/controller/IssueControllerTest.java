@@ -99,11 +99,11 @@ public class IssueControllerTest {
         project.setId(1L);
         project.setName("Test Project");
 
-        issue1 = new Issue("Test Issue1", "Issue Description", tester);
+        issue1 = new Issue("Test Issue1", "Issue Description", Issue.Priority.MAJOR, tester);
         issue1.setId(1L);
         issue1.setProject(project);
 
-        issue2 = new Issue("Test Issue2", "Issue Description", tester);
+        issue2 = new Issue("Test Issue2", "Issue Description", Issue.Priority.MAJOR, tester);
         issue2.setId(2L);
         issue2.setProject(project);
 
@@ -314,25 +314,65 @@ public class IssueControllerTest {
     }
 
     @Test
-    public void testSearchIssues() throws Exception {
-        issue1.setReporter(tester);
-        issue2.setReporter(tester);
+    public void testSearchIssues_ByAssignee() throws Exception {
         issue1.setAssignee(dev);
         issue2.setAssignee(dev);
+        List<Issue> issues = Arrays.asList(issue1, issue2);
+
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(3L);
+        when(issueService.searchIssues(1L, dev.getUsername(), null, null, 3L)).thenReturn(issues);
+        when(modelMapper.map(any(Issue.class), eq(IssueDTO.class))).thenReturn(issueDTO1, issueDTO2);
+
+        mockMvc.perform(get("/api/projects/1/issues/search")
+                .cookie(new Cookie("jwt", "token"))
+                .param("assigneeUsername", "dev"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].title").value(issueDTO1.getTitle()));
+    }
+
+    @Test
+    public void testSearchIssues_ByReporter() throws Exception {
+        List<Issue> issues = Arrays.asList(issue1, issue2);
+
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(3L);
+        when(issueService.searchIssues(1L, null, tester.getUsername(), null, 3L)).thenReturn(issues);
+        when(modelMapper.map(any(Issue.class), eq(IssueDTO.class))).thenReturn(issueDTO1, issueDTO2);
+
+        mockMvc.perform(get("/api/projects/1/issues/search")
+                .cookie(new Cookie("jwt", "token"))
+                .param("reporterUsername", "tester"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].title").value(issueDTO1.getTitle()));
+    }
+
+    @Test
+    public void testSearchIssues_ByStatus() throws Exception {
         issue1.setStatus(Issue.Status.ASSIGNED);
         issue2.setStatus(Issue.Status.ASSIGNED);
 
         List<Issue> issues = Arrays.asList(issue1, issue2);
 
         when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(3L);
-        when(issueService.searchIssues(1L, dev.getUsername(), tester.getUsername(), Issue.Status.ASSIGNED, 3L)).thenReturn(issues);
+        when(issueService.searchIssues(1L, null, null, Issue.Status.ASSIGNED, 3L)).thenReturn(issues);
         when(modelMapper.map(any(Issue.class), eq(IssueDTO.class))).thenReturn(issueDTO1, issueDTO2);
 
         mockMvc.perform(get("/api/projects/1/issues/search")
                 .cookie(new Cookie("jwt", "token"))
-                .param("assigneeUsername", "dev")
-                .param("reporterUsername", "tester")
                 .param("status", "ASSIGNED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].title").value(issueDTO1.getTitle()));
+    }
+
+    @Test
+    public void testSearchIssues_Default() throws Exception {
+        List<Issue> issues = Arrays.asList(issue1, issue2);
+
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(3L);
+        when(issueService.searchIssues(1L, null, null, null, 3L)).thenReturn(issues);
+        when(modelMapper.map(any(Issue.class), eq(IssueDTO.class))).thenReturn(issueDTO1, issueDTO2);
+
+        mockMvc.perform(get("/api/projects/1/issues/search")
+                .cookie(new Cookie("jwt", "token")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].title").value(issueDTO1.getTitle()));
     }
@@ -364,7 +404,7 @@ public class IssueControllerTest {
     }
 
     @Test
-    public void testGetRecommendedAssignees() throws Exception {
+    public void testGetRecommendedAssignees_Success() throws Exception {
 
         UserResponseDTO devDTO = new UserResponseDTO();
         devDTO.setUsername("dev");
@@ -379,5 +419,13 @@ public class IssueControllerTest {
         mockMvc.perform(get("/api/projects/1/issues/3/recommendedAssignees"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].username").value(userResponseDTOs.get(0).getUsername()));
+    }
+
+    @Test
+    public void testGetRecommendedAssignees_NotFound() throws Exception {
+        when(issueService.getRecommendedAssignees(3L)).thenThrow(new IssueNotFoundException(3L));
+
+        mockMvc.perform(get("/api/projects/1/issues/3/recommendedAssignees"))
+                .andExpect(status().isNotFound());
     }
 }
