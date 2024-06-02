@@ -4,6 +4,7 @@ import com.causwe.backend.exceptions.IssueNotFoundException;
 import com.causwe.backend.exceptions.UnauthorizedException;
 import com.causwe.backend.model.*;
 import com.causwe.backend.repository.IssueRepository;
+
 import lombok.Setter;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -160,7 +161,7 @@ public class IssueServiceImpl implements IssueService {
                     .url("https://api.groq.com/openai/v1/chat/completions")
                     .post(body)
                     .addHeader("Content-Type", "application/json")
-                    .addHeader("Authorization", "Bearer " + System.getenv("GROQ_API_KEY"))
+                    .addHeader("Authorization", "Bearer " + "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")
                     .build();
             try (Response response = httpClient.newCall(request).execute()) {
                 if (response.isSuccessful()) {
@@ -171,7 +172,8 @@ public class IssueServiceImpl implements IssueService {
                     JSONArray choices = jsonObject.getJSONArray("choices");
                     JSONObject messageObject = choices.getJSONObject(0).getJSONObject("message");
                     String content = messageObject.getString("content");
-                    sqlQuery = content.replaceAll("^```sql\\n|\\n```$", "");
+                    sqlQuery = content.replaceAll("^```sql\\n|\\n```$|;", "");
+                    System.out.println(sqlQuery);
                     Objects.requireNonNull(cacheManager.getCache("sqlQueries")).put(cacheKey, sqlQuery);
                 } else {
 
