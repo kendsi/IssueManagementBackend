@@ -12,9 +12,10 @@ import com.causwe.backend.repository.CommentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -25,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 public class CommentServiceTest {
 
     @Mock
@@ -47,7 +49,6 @@ public class CommentServiceTest {
 
     @BeforeEach
     public void setUp() {
-        MockitoAnnotations.openMocks(this);
 
         admin = new Admin();
         admin.setUsername("admin");
@@ -128,11 +129,30 @@ public class CommentServiceTest {
     }
 
     @Test
-    public void testDeleteComment_Unauthorized() {
+    public void testDeleteComment_Unauthorized_NotPermitted() {
         when(userService.getUserById(2L)).thenReturn(dev);
         when(commentRepository.findById(1L)).thenReturn(Optional.of(comment1));
 
         assertThrows(UnauthorizedException.class, () -> {
+            commentService.deleteComment(1L, 2L);
+        });
+    }
+
+    @Test
+    public void testDeleteComment_Unauthorized_NotLoggedIn() {
+        when(userService.getUserById(null)).thenReturn(null);
+
+        assertThrows(UnauthorizedException.class, () -> {
+            commentService.deleteComment(1L, null);
+        });
+    }
+
+    @Test
+    public void testDeleteComment_NotFound() {
+        when(userService.getUserById(2L)).thenReturn(dev);
+        when(commentRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThrows(CommentNotFoundException.class, () -> {
             commentService.deleteComment(1L, 2L);
         });
     }
@@ -152,7 +172,7 @@ public class CommentServiceTest {
     }
 
     @Test
-    public void testUpdateComment_Unauthorized() {
+    public void testUpdateComment_Unauthorized_NotPermitted() {
         Comment updatedData = new Comment();
         updatedData.setContent("Updated Comment");
 
@@ -165,12 +185,24 @@ public class CommentServiceTest {
     }
 
     @Test
+    public void testUpdateComment_Unauthorized_NotLoggedIn() {
+        Comment updatedData = new Comment();
+        updatedData.setContent("Updated Comment");
+
+        when(userService.getUserById(null)).thenReturn(null);
+
+        assertThrows(UnauthorizedException.class, () -> {
+            commentService.updateComment(1L, updatedData, null);
+        });
+    }
+
+    @Test
     public void testUpdateComment_NotFound() {
         Comment updatedData = new Comment();
         updatedData.setContent("Updated Comment");
 
         when(userService.getUserById(2L)).thenReturn(dev);
-        when(commentRepository.findById(2L)).thenReturn(Optional.empty());
+        when(commentRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThrows(CommentNotFoundException.class, () -> {
             commentService.updateComment(1L, updatedData, 2L);

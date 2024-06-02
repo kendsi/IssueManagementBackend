@@ -7,7 +7,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -35,7 +34,7 @@ public class IssueStatisticsController {
     }
 
     @GetMapping("/issuesPerDayAndStatusInWeek")
-    public ResponseEntity<Map<String, Long>> getIssuesPerDayAndStatusInWeek(@PathVariable Long projectId, @RequestBody Issue.Status status) {
+    public ResponseEntity<Map<String, Long>> getIssuesPerDayAndStatusInWeek(@PathVariable Long projectId, @RequestParam Issue.Status status) {
         if (status != null) {
             Map<String, Long> issuesPerDayAndStatusInWeek = issueStatisticsService.getIssuesPerDayAndStatusInWeek(projectId, status.toString());
             return new ResponseEntity<>(issuesPerDayAndStatusInWeek, HttpStatus.OK);
@@ -57,7 +56,7 @@ public class IssueStatisticsController {
     }
 
     @GetMapping("/issuesPerDayAndPriorityInWeek")
-    public ResponseEntity<Map<String, Long>> getIssuesPerDayAndPriorityInWeek(@PathVariable Long projectId, @RequestBody Issue.Priority priority) {
+    public ResponseEntity<Map<String, Long>> getIssuesPerDayAndPriorityInWeek(@PathVariable Long projectId, @RequestParam Issue.Priority priority) {
         if (priority != null) {
             Map<String, Long> issuesPerDayAndPriorityInWeek = issueStatisticsService.getIssuesPerDayAndPriorityInWeek(projectId, priority.toString());
             return new ResponseEntity<>(issuesPerDayAndPriorityInWeek, HttpStatus.OK);

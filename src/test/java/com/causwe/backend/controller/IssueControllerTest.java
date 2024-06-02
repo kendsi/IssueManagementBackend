@@ -4,6 +4,7 @@ import com.causwe.backend.dto.IssueDTO;
 import com.causwe.backend.dto.UserResponseDTO;
 import com.causwe.backend.exceptions.GlobalExceptionHandler;
 import com.causwe.backend.exceptions.IssueNotFoundException;
+import com.causwe.backend.exceptions.UnauthorizedException;
 import com.causwe.backend.model.Admin;
 import com.causwe.backend.model.Developer;
 import com.causwe.backend.model.Issue;
@@ -18,11 +19,10 @@ import jakarta.servlet.http.Cookie;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.modelmapper.ModelMapper;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,7 +31,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.util.ArrayList;
+import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -41,6 +42,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @AutoConfigureMockMvc
+@ExtendWith(MockitoExtension.class)
 public class IssueControllerTest {
 
     @Autowired
@@ -72,7 +74,6 @@ public class IssueControllerTest {
 
     @BeforeEach
     public void setUp() {
-        MockitoAnnotations.openMocks(this);
         mockMvc = MockMvcBuilders.standaloneSetup(issueController)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
@@ -119,13 +120,7 @@ public class IssueControllerTest {
 
     @Test
     public void testGetAllIssues() throws Exception {
-        List<Issue> issues = new ArrayList<>();
-        issues.add(issue1);
-        issues.add(issue2);
-
-        List<IssueDTO> issueDTOs = new ArrayList<>();
-        issueDTOs.add(issueDTO1);
-        issueDTOs.add(issueDTO2);
+        List<Issue> issues = Arrays.asList(issue1, issue2);
 
         when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(3L);
         when(issueService.getAllIssues(1L, 3L)).thenReturn(issues);
@@ -151,7 +146,6 @@ public class IssueControllerTest {
     @Test
     public void testGetIssueById_NotFound() throws Exception {
         when(issueService.getIssueById(3L)).thenThrow(new IssueNotFoundException(3L));
-        when(modelMapper.map(issue1, IssueDTO.class)).thenReturn(issueDTO1);
 
         mockMvc.perform(get("/api/projects/1/issues/3"))
                 .andExpect(status().isNotFound());
@@ -160,20 +154,20 @@ public class IssueControllerTest {
     @Test
     public void testCreateIssue_Success() throws Exception {
         when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(3L);
+        when(modelMapper.map(any(IssueDTO.class), eq(Issue.class))).thenReturn(issue2);
         when(issueService.createIssue(1L, issue2, 3L)).thenReturn(issue2);
-        when(modelMapper.map(issueDTO2, Issue.class)).thenReturn(issue2);
-        when(modelMapper.map(issue2, IssueDTO.class)).thenReturn(issueDTO2);
+        when(modelMapper.map(any(Issue.class), eq(IssueDTO.class))).thenReturn(issueDTO2);
 
         mockMvc.perform(post("/api/projects/1/issues")
                 .cookie(new Cookie("jwt", "token"))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(issueDTO2)))
-                .andExpect(status().isCreated());
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.title").value(issue2.getTitle()));
     }
 
     @Test
-    public void testCreateIssue_Failure() throws Exception {
-        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(3L);
+    public void testCreateIssue_BadRequest() throws Exception {
         issueDTO2.setTitle("");
 
         mockMvc.perform(post("/api/projects/1/issues")
@@ -184,7 +178,33 @@ public class IssueControllerTest {
     }
 
     @Test
-    public void testUpdateIssue() throws Exception {
+    public void testCreateIssue_Unauthorized_NotPermitted() throws Exception {
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(2L);
+        when(modelMapper.map(any(IssueDTO.class), eq(Issue.class))).thenReturn(issue2);
+        when(issueService.createIssue(1L, issue2, 2L)).thenThrow(new UnauthorizedException("User not authorized to create issue"));
+
+        mockMvc.perform(post("/api/projects/1/issues")
+                .cookie(new Cookie("jwt", "token"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(issueDTO2)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    public void testCreateIssue_Unauthorized_NotLoggedIn() throws Exception {
+        when(jwtTokenProvider.getUserIdFromToken("")).thenReturn(null);
+        when(modelMapper.map(any(IssueDTO.class), eq(Issue.class))).thenReturn(issue2);
+        when(issueService.createIssue(1L, issue2, null)).thenThrow(new UnauthorizedException("User not logged in"));
+
+        mockMvc.perform(post("/api/projects/1/issues")
+                .cookie(new Cookie("jwt", ""))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(issueDTO2)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    public void testUpdateIssue_Success() throws Exception {
         
         issueDTO2.setAssigneeUsername("dev");
         issueDTO2.setDescription("Updated Description");
@@ -207,8 +227,8 @@ public class IssueControllerTest {
         issueDTO1.setPriority(IssueDTO.Priority.MINOR);
 
         when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(1L);
+        when(modelMapper.map(any(IssueDTO.class), eq(Issue.class))).thenReturn(issue2);
         when(issueService.updateIssue(1L, issue2, 1L)).thenReturn(issue1);
-        when(modelMapper.map(any(IssueDTO.class), eq(Issue.class))).thenReturn(issue2, issue1);
         when(modelMapper.map(any(Issue.class), eq(IssueDTO.class))).thenReturn(issueDTO1);
 
         mockMvc.perform(put("/api/projects/1/issues/1")
@@ -221,6 +241,79 @@ public class IssueControllerTest {
     }
 
     @Test
+    public void testUpdateIssue_BadRequest() throws Exception {
+        issueDTO2.setTitle("");
+
+        mockMvc.perform(put("/api/projects/1/issues/3")
+                .cookie(new Cookie("jwt", "token"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(issueDTO2)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void testUpdateIssue_NotFound() throws Exception {
+        
+        issueDTO2.setAssigneeUsername("dev");
+        issueDTO2.setDescription("Updated Description");
+        issueDTO2.setStatus(IssueDTO.Status.ASSIGNED);
+        issueDTO2.setPriority(IssueDTO.Priority.MINOR);
+
+        issue2.setAssignee(dev);
+        issue2.setDescription("Updated Description");
+        issue2.setStatus(Issue.Status.ASSIGNED);
+        issue2.setPriority(Issue.Priority.MINOR);
+
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(1L);
+        when(modelMapper.map(any(IssueDTO.class), eq(Issue.class))).thenReturn(issue2);
+        when(issueService.updateIssue(3L, issue2, 1L)).thenThrow(new IssueNotFoundException(3L));
+
+        mockMvc.perform(put("/api/projects/1/issues/3")
+                .cookie(new Cookie("jwt", "token"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(issueDTO2)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void testUpdateIssue_Unauthorized_NotChanged() throws Exception {
+
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(1L);
+        when(modelMapper.map(any(IssueDTO.class), eq(Issue.class))).thenReturn(issue2);
+        when(issueService.updateIssue(1L, issue2, 1L)).thenThrow(new UnauthorizedException("Issue not changed"));
+
+        mockMvc.perform(put("/api/projects/1/issues/1")
+                .cookie(new Cookie("jwt", "token"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(issueDTO2)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    public void testUpdateIssue_Unauthorized_NotLoggedIn() throws Exception {
+
+        issueDTO2.setAssigneeUsername("dev");
+        issueDTO2.setDescription("Updated Description");
+        issueDTO2.setStatus(IssueDTO.Status.ASSIGNED);
+        issueDTO2.setPriority(IssueDTO.Priority.MINOR);
+
+        issue2.setAssignee(dev);
+        issue2.setDescription("Updated Description");
+        issue2.setStatus(Issue.Status.ASSIGNED);
+        issue2.setPriority(Issue.Priority.MINOR);
+
+        when(jwtTokenProvider.getUserIdFromToken("")).thenReturn(null);
+        when(modelMapper.map(any(IssueDTO.class), eq(Issue.class))).thenReturn(issue2);
+        when(issueService.updateIssue(1L, issue2, null)).thenThrow(new UnauthorizedException("User not logged in"));
+
+        mockMvc.perform(put("/api/projects/1/issues/1")
+                .cookie(new Cookie("jwt", ""))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(issueDTO2)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     public void testSearchIssues() throws Exception {
         issue1.setReporter(tester);
         issue2.setReporter(tester);
@@ -229,9 +322,7 @@ public class IssueControllerTest {
         issue1.setStatus(Issue.Status.ASSIGNED);
         issue2.setStatus(Issue.Status.ASSIGNED);
 
-        List<Issue> issues = new ArrayList<>();
-        issues.add(issue1);
-        issues.add(issue2);
+        List<Issue> issues = Arrays.asList(issue1, issue2);
 
         when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(3L);
         when(issueService.searchIssues(1L, dev.getUsername(), tester.getUsername(), Issue.Status.ASSIGNED, 3L)).thenReturn(issues);
@@ -239,7 +330,6 @@ public class IssueControllerTest {
 
         mockMvc.perform(get("/api/projects/1/issues/search")
                 .cookie(new Cookie("jwt", "token"))
-                .contentType(MediaType.APPLICATION_JSON)
                 .param("assigneeUsername", "dev")
                 .param("reporterUsername", "tester")
                 .param("status", "ASSIGNED"))
@@ -247,20 +337,31 @@ public class IssueControllerTest {
                 .andExpect(jsonPath("$[0].title").value(issueDTO1.getTitle()));
     }
 
-    // @Test
-    // public void testSearchIssuesbyNL() throws Exception {
-    //     List<Issue> issues = Arrays.asList(issue);
-    //     List<IssueDTO> issueDTOs = Arrays.asList(issueDTO);
+    @Test
+    public void testSearchIssuesbyNL_Success() throws Exception {
+        List<Issue> issues = Arrays.asList(issue1);
 
-    //     when(issueService.searchIssuesByNL(anyLong(), anyString(), anyLong())).thenReturn(issues);
-    //     when(modelMapper.map(any(Issue.class), any(Class.class))).thenReturn(issueDTO);
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(1L);
+        when(issueService.searchIssuesByNL(1L, "test message", 1L)).thenReturn(issues);
+        when(modelMapper.map(any(Issue.class), eq(IssueDTO.class))).thenReturn(issueDTO1);
 
-    //     mockMvc.perform(get("/api/projects/1/issues/searchbynl")
-    //                     .param("userMessage", "test message")
-    //                     .cookie(new jakarta.servlet.http.Cookie("memberId", "1")))
-    //             .andExpect(status().isOk())
-    //             .andExpect(jsonPath("$[0].title").value(issueDTO.getTitle()));
-    // }
+        mockMvc.perform(get("/api/projects/1/issues/searchbynl")
+                    .param("userMessage", "test message")
+                    .cookie(new Cookie("jwt", "token")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].title").value(issueDTO1.getTitle()));
+    }
+
+    @Test
+    public void testSearchIssuesbyNL_Failure() throws Exception {
+
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(1L);
+        when(issueService.searchIssuesByNL(1L, "test message", 1L)).thenThrow(new IOException("Unexpected code" + 401));
+        mockMvc.perform(get("/api/projects/1/issues/searchbynl")
+                    .param("userMessage", "test message")
+                    .cookie(new Cookie("jwt", "token")))
+                    .andExpect(status().isInternalServerError());
+    }
 
     @Test
     public void testGetRecommendedAssignees() throws Exception {
@@ -269,10 +370,8 @@ public class IssueControllerTest {
         devDTO.setUsername("dev");
         devDTO.setRole(UserResponseDTO.Role.DEV);
 
-        List<User> recommendedAssignees = new ArrayList<>();
-        recommendedAssignees.add(dev);
-        List<UserResponseDTO> userResponseDTOs = new ArrayList<>();
-        userResponseDTOs.add(devDTO);
+        List<User> recommendedAssignees = Arrays.asList(dev);
+        List<UserResponseDTO> userResponseDTOs = Arrays.asList(devDTO);
 
         when(issueService.getRecommendedAssignees(3L)).thenReturn(recommendedAssignees);
         when(modelMapper.map(any(User.class), eq(UserResponseDTO.class))).thenReturn(userResponseDTOs.get(0));
