@@ -4,6 +4,7 @@ import com.causwe.backend.exceptions.IssueNotFoundException;
 import com.causwe.backend.exceptions.UnauthorizedException;
 import com.causwe.backend.model.*;
 import com.causwe.backend.repository.IssueRepository;
+import lombok.Setter;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -34,9 +35,11 @@ public class IssueServiceImpl implements IssueService {
     private final UserService userService;
     private final OkHttpClient httpClient = new OkHttpClient();
 
+    @Setter
     @PersistenceContext
     private EntityManager entityManager;
 
+    @Setter
     @Autowired
     private CacheManager cacheManager;
 
