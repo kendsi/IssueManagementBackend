@@ -94,11 +94,11 @@ public class IssueServiceTest {
         project.setId(1L);
         project.setName("Test Project");
 
-        issue1 = new Issue("Test Issue1", "Issue Description", tester);
+        issue1 = new Issue("Test Issue1", "Issue Description", Issue.Priority.MAJOR, tester);
         issue1.setId(1L);
         issue1.setProject(project);
 
-        issue2 = new Issue("Test Issue2", "Issue Description", tester);
+        issue2 = new Issue("Test Issue2", "Issue Description", Issue.Priority.MAJOR, tester);
         issue2.setId(2L);
         issue2.setProject(project);
 
@@ -171,7 +171,7 @@ public class IssueServiceTest {
 
     @Test
     public void testUpdateIssue_Success() {
-        Issue updatedIssue = new Issue("Updated Issue", "Updated Description", tester);
+        Issue updatedIssue = new Issue("Updated Issue", "Updated Description", Issue.Priority.MAJOR, tester);
         updatedIssue.setStatus(Issue.Status.ASSIGNED);
         updatedIssue.setAssignee(dev);
 
@@ -189,7 +189,7 @@ public class IssueServiceTest {
 
     @Test
     public void testUpdateIssue_Unauthorized_NotLoggedIn() {
-        Issue updatedIssue = new Issue("Updated Issue", "Updated Description", tester);
+        Issue updatedIssue = new Issue("Updated Issue", "Updated Description", Issue.Priority.MAJOR, tester);
 
         when(userService.getUserById(null)).thenReturn(null);
 
@@ -200,7 +200,7 @@ public class IssueServiceTest {
 
     @Test
     public void testUpdateIssue_Unauthorized_NotPermitted() {
-        Issue updatedIssue = new Issue("Updated Issue", "Updated Description", tester);
+        Issue updatedIssue = new Issue("Updated Issue", "Updated Description", Issue.Priority.MAJOR, tester);
 
         when(userService.getUserById(2L)).thenReturn(dev);
 
@@ -211,7 +211,7 @@ public class IssueServiceTest {
 
     @Test
     public void testUpdateIssue_NoChanges() {
-        Issue updatedIssue = new Issue("Test Issue1", "Issue Description", tester);
+        Issue updatedIssue = new Issue("Test Issue1", "Issue Description", Issue.Priority.MAJOR, tester);
 
         when(userService.getUserById(1L)).thenReturn(admin);
         when(issueRepository.findById(1L)).thenReturn(Optional.of(issue1));
@@ -223,7 +223,7 @@ public class IssueServiceTest {
 
     @Test
     public void testUpdateIssue_NotFound() {
-        Issue updatedIssue = new Issue("Test Issue1", "Issue Description", tester);
+        Issue updatedIssue = new Issue("Test Issue1", "Issue Description", Issue.Priority.MAJOR, tester);
 
         when(userService.getUserById(1L)).thenReturn(admin);
         when(issueRepository.findById(1L)).thenReturn(Optional.empty());
@@ -371,7 +371,7 @@ public class IssueServiceTest {
         issue1.setAssignee(dev);
         issue2.setAssignee(dev2);
         
-        Issue newIssue = new Issue("New Issue", "Issue Description", tester);
+        Issue newIssue = new Issue("New Issue", "Issue Description", Issue.Priority.MAJOR, tester);
         newIssue.setId(3L);
 
         when(issueRepository.existsById(3L)).thenReturn(true);

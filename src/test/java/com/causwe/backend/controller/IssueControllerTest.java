@@ -99,11 +99,11 @@ public class IssueControllerTest {
         project.setId(1L);
         project.setName("Test Project");
 
-        issue1 = new Issue("Test Issue1", "Issue Description", tester);
+        issue1 = new Issue("Test Issue1", "Issue Description", Issue.Priority.MAJOR, tester);
         issue1.setId(1L);
         issue1.setProject(project);
 
-        issue2 = new Issue("Test Issue2", "Issue Description", tester);
+        issue2 = new Issue("Test Issue2", "Issue Description", Issue.Priority.MAJOR, tester);
         issue2.setId(2L);
         issue2.setProject(project);
 
