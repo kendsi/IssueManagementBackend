@@ -36,8 +36,8 @@ public class IssueStatisticsControllerTest {
     @InjectMocks
     private IssueStatisticsController issueStatisticsController;
 
-    private Map<String, Long> issueStatistics;
-    private Long projectId = 1L;
+    private Map<String, Long> issueStatistics1;
+    private Map<String, Map<String, Long>> issueStatistics2;
 
     @BeforeEach
     public void setUp() {
@@ -45,59 +45,94 @@ public class IssueStatisticsControllerTest {
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
 
-        issueStatistics = new LinkedHashMap<>();
+        issueStatistics1 = new LinkedHashMap<>();
+        issueStatistics2 = new LinkedHashMap<>();
     }
 
     @Test
     public void testGetIssuesPerStatus() throws Exception {
-        issueStatistics.put("NEW", 5L);
-        issueStatistics.put("ASSINGED", 3L);
+        issueStatistics1.put("NEW", 5L);
+        issueStatistics1.put("ASSINGED", 3L);
         
-        when(issueStatisticsService.getIssuesPerStatus(projectId)).thenReturn(issueStatistics);
+        when(issueStatisticsService.getIssuesPerStatus(1L)).thenReturn(issueStatistics1);
 
-        mockMvc.perform(get("/api/projects/{projectId}/statistics/issuesPerStatus", projectId))
+        mockMvc.perform(get("/api/projects/1/statistics/issuesPerStatus"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(content().json("{\"NEW\":5,\"ASSINGED\":3}"));
     }
 
     @Test
-    public void testGetIssuesPerFixer() throws Exception {
-        issueStatistics.put("dev1", 2L);
-        issueStatistics.put("dev2", 3L);
+    public void getIssueStatusCounts() throws Exception {
+        issueStatistics1.put("REMAINING", 10L);
+        issueStatistics1.put("RESOLVED", 5L);
+        issueStatistics1.put("ASSIGNED", 5L);
+        issueStatistics1.put("UNASSIGNED", 5L);
+        issueStatistics1.put("Registered Issues", 25L);
+        
+        when(issueStatisticsService.getIssueStatusCounts(1L)).thenReturn(issueStatistics1);
 
-        when(issueStatisticsService.getIssuesPerFixer(projectId)).thenReturn(issueStatistics);
-
-        mockMvc.perform(get("/api/projects/{projectId}/statistics/issuesPerFixer", projectId))
+        mockMvc.perform(get("/api/projects/1/statistics/issueStatusCounts"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(content().json("{\"dev1\":2,\"dev2\":3}"));
+                .andExpect(content().json("{\"REMAINING\":10,\"RESOLVED\":5,\"ASSIGNED\":5,\"UNASSIGNED\":5,\"Registered Issues\":25}"));
     }
 
     @Test
-    public void testGetIssuesPerDayAndStatusInWeek() throws Exception {
+    public void testGetIssuesPerFixer() throws Exception {
+        issueStatistics1.put("RESOLVED", 3L);
+        issueStatistics1.put("CLOSED", 2L);
+        issueStatistics2.put("dev1", issueStatistics1);
+
+        when(issueStatisticsService.getIssuesPerFixer(1L)).thenReturn(issueStatistics2);
+
+        mockMvc.perform(get("/api/projects/1/statistics/issuesPerFixer"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().json("{\"dev1\":{\"RESOLVED\":3,\"CLOSED\":2}}"));
+    }
+
+    @Test
+    public void testGetIssuesPerDayAndStatusInWeek_PerStatus() throws Exception {
         String status = Issue.Status.RESOLVED.toString();
-        issueStatistics.put("05-10", 1L);
-        issueStatistics.put("05-11", 3L);
-        issueStatistics.put("05-12", 0L);
+        issueStatistics1.put("05-10", 1L);
+        issueStatistics1.put("05-11", 3L);
+        issueStatistics1.put("05-12", 0L);
 
-        when(issueStatisticsService.getIssuesPerDayAndStatusInWeek(projectId, status)).thenReturn(issueStatistics);
+        when(issueStatisticsService.getIssuesPerDayAndStatusInWeek(1L, status)).thenReturn(issueStatistics1);
 
-        mockMvc.perform(get("/api/projects/{projectId}/statistics/issuesPerDayAndStatusInWeek", projectId)
-                .param("status", status))
+        mockMvc.perform(get("/api/projects/1/statistics/issuesPerDayAndStatusInWeek/{status}", status))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(content().json("{\"05-10\":1,\"05-11\":3,\"05-12\":0}"));
     }
 
     @Test
+    public void testGetIssuesPerDayAndStatusInWeek_All() throws Exception {
+        issueStatistics1.put("NEW", 3L);
+        issueStatistics1.put("ASSIGNED", 2L);
+        issueStatistics1.put("FIXED", 1L);
+        issueStatistics1.put("RESOLVED", 0L);
+        issueStatistics1.put("CLOSED", 0L);
+        issueStatistics1.put("REOPENED", 0L);
+        issueStatistics2.put("05-11", issueStatistics1);
+
+        when(issueStatisticsService.getIssuesPerDayAndStatusInWeek(1L)).thenReturn(issueStatistics2);
+
+        mockMvc.perform(get("/api/projects/1/statistics/issuesPerDayAndStatusInWeek"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().json("{\"05-11\":{\"NEW\":3,\"ASSIGNED\":2,\"FIXED\":1,\"RESOLVED\":0,\"CLOSED\":0,\"REOPENED\":0}}"));
+    }
+
+    @Test
     public void testGetIssuesOrderByComments() throws Exception {
-        issueStatistics.put("Issue1", 5L);
-        issueStatistics.put("Issue2", 10L);
+        issueStatistics1.put("Issue1", 5L);
+        issueStatistics1.put("Issue2", 10L);
 
-        when(issueStatisticsService.getIssuesOrderByComments(projectId)).thenReturn(issueStatistics);
+        when(issueStatisticsService.getIssuesOrderByComments(1L)).thenReturn(issueStatistics1);
 
-        mockMvc.perform(get("/api/projects/{projectId}/statistics/issuesOrderByComments", projectId))
+        mockMvc.perform(get("/api/projects/1/statistics/issuesOrderByComments"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(content().json("{\"Issue1\":5,\"Issue2\":10}"));
@@ -105,12 +140,12 @@ public class IssueStatisticsControllerTest {
 
     @Test
     public void testGetIssuesPerDayInMonth() throws Exception {
-        issueStatistics.put("05-12", 5L);
-        issueStatistics.put("05-13", 4L);
+        issueStatistics1.put("05-12", 5L);
+        issueStatistics1.put("05-13", 4L);
 
-        when(issueStatisticsService.getIssuesPerDayInMonth(projectId)).thenReturn(issueStatistics);
+        when(issueStatisticsService.getIssuesPerDayInMonth(1L)).thenReturn(issueStatistics1);
 
-        mockMvc.perform(get("/api/projects/{projectId}/statistics/issuesPerDayInMonth", projectId))
+        mockMvc.perform(get("/api/projects/1/statistics/issuesPerDayInMonth"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(content().json("{\"05-12\":5,\"05-13\":4}"));
@@ -118,15 +153,14 @@ public class IssueStatisticsControllerTest {
 
     @Test
     public void testGetIssuesPerDayAndPriorityInWeek() throws Exception {
-        issueStatistics.put("05-10", 0L);
-        issueStatistics.put("05-11", 1L);
-        issueStatistics.put("05-12", 2L);
-
         String priority = Issue.Priority.MAJOR.toString();
-        when(issueStatisticsService.getIssuesPerDayAndPriorityInWeek(projectId, priority)).thenReturn(issueStatistics);
+        issueStatistics1.put("05-10", 0L);
+        issueStatistics1.put("05-11", 1L);
+        issueStatistics1.put("05-12", 2L);
 
-        mockMvc.perform(get("/api/projects/{projectId}/statistics/issuesPerDayAndPriorityInWeek", projectId)
-                .param("priority", priority))
+        when(issueStatisticsService.getIssuesPerDayAndPriorityInWeek(1L, priority)).thenReturn(issueStatistics1);
+
+        mockMvc.perform(get("/api/projects/1/statistics/issuesPerDayAndPriorityInWeek/{priority}", priority))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(content().json("{\"05-10\":0,\"05-11\":1,\"05-12\":2}"));
@@ -134,12 +168,12 @@ public class IssueStatisticsControllerTest {
 
     @Test
     public void testGetIssuesPerMonth() throws Exception {
-        issueStatistics.put("2024-04", 12L);
-        issueStatistics.put("2024-05", 16L);
+        issueStatistics1.put("2024-04", 12L);
+        issueStatistics1.put("2024-05", 16L);
 
-        when(issueStatisticsService.getIssuesPerMonth(projectId)).thenReturn(issueStatistics);
+        when(issueStatisticsService.getIssuesPerMonth(1L)).thenReturn(issueStatistics1);
 
-        mockMvc.perform(get("/api/projects/{projectId}/statistics/issuesPerMonth", projectId))
+        mockMvc.perform(get("/api/projects/1/statistics/issuesPerMonth"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(content().json("{\"2024-04\":12,\"2024-05\":16}"));
@@ -147,12 +181,12 @@ public class IssueStatisticsControllerTest {
 
     @Test
     public void testGetIssuesPerPriorityInMonth() throws Exception {
-        issueStatistics.put("MAJOR", 4L);
-        issueStatistics.put("MINOR", 3L);
+        issueStatistics1.put("MAJOR", 4L);
+        issueStatistics1.put("MINOR", 3L);
 
-        when(issueStatisticsService.getIssuesPerPriorityInMonth(projectId)).thenReturn(issueStatistics);
+        when(issueStatisticsService.getIssuesPerPriorityInMonth(1L)).thenReturn(issueStatistics1);
 
-        mockMvc.perform(get("/api/projects/{projectId}/statistics/issuesPerPriorityInMonth", projectId))
+        mockMvc.perform(get("/api/projects/1/statistics/issuesPerPriorityInMonth"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(content().json("{\"MAJOR\":4,\"MINOR\":3}"));

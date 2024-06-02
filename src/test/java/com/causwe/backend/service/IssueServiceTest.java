@@ -94,11 +94,11 @@ public class IssueServiceTest {
         project.setId(1L);
         project.setName("Test Project");
 
-        issue1 = new Issue("Test Issue1", "Issue Description", tester);
+        issue1 = new Issue("Test Issue1", "Issue Description", Issue.Priority.MAJOR, tester);
         issue1.setId(1L);
         issue1.setProject(project);
 
-        issue2 = new Issue("Test Issue2", "Issue Description", tester);
+        issue2 = new Issue("Test Issue2", "Issue Description", Issue.Priority.MAJOR, tester);
         issue2.setId(2L);
         issue2.setProject(project);
 
@@ -171,7 +171,7 @@ public class IssueServiceTest {
 
     @Test
     public void testUpdateIssue_Success() {
-        Issue updatedIssue = new Issue("Updated Issue", "Updated Description", tester);
+        Issue updatedIssue = new Issue("Updated Issue", "Updated Description", Issue.Priority.MAJOR, tester);
         updatedIssue.setStatus(Issue.Status.ASSIGNED);
         updatedIssue.setAssignee(dev);
 
@@ -189,7 +189,7 @@ public class IssueServiceTest {
 
     @Test
     public void testUpdateIssue_Unauthorized_NotLoggedIn() {
-        Issue updatedIssue = new Issue("Updated Issue", "Updated Description", tester);
+        Issue updatedIssue = new Issue("Updated Issue", "Updated Description", Issue.Priority.MAJOR, tester);
 
         when(userService.getUserById(null)).thenReturn(null);
 
@@ -200,7 +200,7 @@ public class IssueServiceTest {
 
     @Test
     public void testUpdateIssue_Unauthorized_NotPermitted() {
-        Issue updatedIssue = new Issue("Updated Issue", "Updated Description", tester);
+        Issue updatedIssue = new Issue("Updated Issue", "Updated Description", Issue.Priority.MAJOR, tester);
 
         when(userService.getUserById(2L)).thenReturn(dev);
 
@@ -211,7 +211,7 @@ public class IssueServiceTest {
 
     @Test
     public void testUpdateIssue_NoChanges() {
-        Issue updatedIssue = new Issue("Test Issue1", "Issue Description", tester);
+        Issue updatedIssue = new Issue("Test Issue1", "Issue Description", Issue.Priority.MAJOR, tester);
 
         when(userService.getUserById(1L)).thenReturn(admin);
         when(issueRepository.findById(1L)).thenReturn(Optional.of(issue1));
@@ -223,7 +223,7 @@ public class IssueServiceTest {
 
     @Test
     public void testUpdateIssue_NotFound() {
-        Issue updatedIssue = new Issue("Test Issue1", "Issue Description", tester);
+        Issue updatedIssue = new Issue("Test Issue1", "Issue Description", Issue.Priority.MAJOR, tester);
 
         when(userService.getUserById(1L)).thenReturn(admin);
         when(issueRepository.findById(1L)).thenReturn(Optional.empty());
@@ -299,20 +299,16 @@ public class IssueServiceTest {
 
     @Test
     public void testSearchIssuesByNL_CachedHit() throws IOException {
-        // Setup cached SQL query
         String cacheKey = "sqlQuery::1::find all issues::3";
         String cachedSqlQuery = "SELECT * FROM issues WHERE project_id = 1 ORDER BY reported_date DESC";
         cache.put(cacheKey, cachedSqlQuery);
 
-        // Setup EntityManager mock
         Query query = mock(Query.class);
         when(entityManager.createNativeQuery(cachedSqlQuery, Issue.class)).thenReturn(query);
         when(query.getResultList()).thenReturn(List.of(issue1, issue2));
 
-        // Call the method
         List<Issue> issues = issueService.searchIssuesByNL(1L, "find all issues", 3L);
 
-        // Assertions
         assertEquals(2, issues.size());
         verify(entityManager, times(1)).createNativeQuery(cachedSqlQuery, Issue.class);
         verify(query, times(1)).getResultList();
@@ -320,11 +316,9 @@ public class IssueServiceTest {
 
     @Test
     public void testSearchIssuesByNL_CacheMiss() throws IOException {
-        // Setup no cached SQL query
         String cacheKey = "sqlQuery::1::find all issues::3";
         assertNull(cache.get(cacheKey, String.class));
 
-        // Setup mock web server response
         String jsonResponse = "{\n" +
                 "  \"choices\": [\n" +
                 "    {\n" +
@@ -338,16 +332,13 @@ public class IssueServiceTest {
                 .setBody(jsonResponse)
                 .addHeader("Content-Type", "application/json"));
 
-        // Setup EntityManager mock
         String expectedSqlQuery = "SELECT * FROM issues WHERE project_id = 1 ORDER BY reported_date DESC";
         Query query = mock(Query.class);
         when(entityManager.createNativeQuery(expectedSqlQuery, Issue.class)).thenReturn(query);
         when(query.getResultList()).thenReturn(List.of(issue1, issue2));
 
-        // Call the method
         List<Issue> issues = issueService.searchIssuesByNL(1L, "find all issues", 3L);
 
-        // Assertions
         assertEquals(2, issues.size());
         assertNotNull(cache.get(cacheKey, String.class));
         verify(entityManager, times(1)).createNativeQuery(expectedSqlQuery, Issue.class);
@@ -355,7 +346,7 @@ public class IssueServiceTest {
     }
 
     @Test
-    public void testGetRecommendedAssignees() {
+    public void testGetRecommendedAssignees_Success() {
         User dev2 = new Developer();
         dev2.setUsername("dev2");
         dev2.setPassword("dev2");
@@ -371,7 +362,7 @@ public class IssueServiceTest {
         issue1.setAssignee(dev);
         issue2.setAssignee(dev2);
         
-        Issue newIssue = new Issue("New Issue", "Issue Description", tester);
+        Issue newIssue = new Issue("New Issue", "Issue Description", Issue.Priority.MAJOR, tester);
         newIssue.setId(3L);
 
         when(issueRepository.existsById(3L)).thenReturn(true);
@@ -385,5 +376,14 @@ public class IssueServiceTest {
         assertNotNull(result);
         assertEquals(3, result.size());
         assertEquals(dev.getId(), result.get(0).getId());
+    }
+
+    @Test
+    public void testGetRecommendedAssignees_NotFound() {
+        when(issueRepository.existsById(3L)).thenReturn(false);
+
+        assertThrows(IssueNotFoundException.class, () -> {
+            issueService.getRecommendedAssignees(3L);
+        });
     }
 }
