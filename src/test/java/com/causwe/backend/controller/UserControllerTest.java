@@ -3,10 +3,9 @@ package com.causwe.backend.controller;
 import com.causwe.backend.dto.UserRequestDTO;
 import com.causwe.backend.dto.UserResponseDTO;
 import com.causwe.backend.exceptions.GlobalExceptionHandler;
-import com.causwe.backend.exceptions.UnauthorizedException;
+import com.causwe.backend.exceptions.UserNotFoundException;
 import com.causwe.backend.model.Admin;
 import com.causwe.backend.model.Developer;
-import com.causwe.backend.model.Tester;
 import com.causwe.backend.model.User;
 import com.causwe.backend.security.JwtTokenProvider;
 import com.causwe.backend.service.UserService;
@@ -16,11 +15,10 @@ import jakarta.servlet.http.Cookie;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -28,25 +26,23 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.ArrayList;
-import java.util.Map;
+import java.util.Arrays;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 @AutoConfigureMockMvc
+@ExtendWith(MockitoExtension.class)
 public class UserControllerTest {
 
     @Autowired
@@ -74,7 +70,6 @@ public class UserControllerTest {
 
     @BeforeEach
     public void setUp() {
-        MockitoAnnotations.openMocks(this);
         mockMvc = MockMvcBuilders.standaloneSetup(userController)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
@@ -102,6 +97,29 @@ public class UserControllerTest {
     }
 
     @Test
+    public void testGetUserById_Success() throws Exception {
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(2L);
+        when(userService.getUserById(2L)).thenReturn(dev);
+        when(modelMapper.map(dev, UserResponseDTO.class)).thenReturn(userResponseDTO);
+
+        mockMvc.perform(get("/api/users")
+                .cookie(new Cookie("jwt", "token")))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.username").value(dev.getUsername()));
+    }
+
+    @Test
+    public void testGetUserById_NotFound() throws Exception {
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(3L);
+        when(userService.getUserById(3L)).thenThrow(new UserNotFoundException(3L));
+
+        mockMvc.perform(get("/api/users")
+                .cookie(new Cookie("jwt", "token")))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     public void testCreateUser_Success() throws Exception {
         when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(1L);
         when(userService.getUserById(1L)).thenReturn(admin);
@@ -122,6 +140,18 @@ public class UserControllerTest {
     }
 
     @Test
+    public void testCreateUser_BadReqeust() throws Exception {
+        userRequestDTO.setUsername("");
+
+        mockMvc.perform(
+            post("/api/users/signup")
+                .cookie(new Cookie("jwt", "token"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(userRequestDTO)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     public void testCreateUser_Unauthorized() throws Exception {
         when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(2L);
         when(userService.getUserById(2L)).thenReturn(dev);
@@ -132,20 +162,6 @@ public class UserControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(userRequestDTO)))
                 .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    public void testCreateUser_InvalidInput() throws Exception {
-        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(1L);
-        when(userService.getUserById(1L)).thenReturn(admin);
-        userRequestDTO.setUsername("");
-
-        mockMvc.perform(
-            post("/api/users/signup")
-                .cookie(new Cookie("jwt", "token"))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(userRequestDTO)))
-                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -182,10 +198,7 @@ public class UserControllerTest {
         dev2ResponseDTO.setUsername("testUser2");
         dev2ResponseDTO.setRole(UserResponseDTO.Role.DEV);
 
-        List<User> devUsers = new ArrayList<>();
-        devUsers.add(dev);
-        devUsers.add(dev2);
-
+        List<User> devUsers = Arrays.asList(dev, dev2);
         when(userService.getAllDevs()).thenReturn(devUsers);
         when(modelMapper.map(any(User.class), eq(UserResponseDTO.class))).thenReturn(userResponseDTO, dev2ResponseDTO);
 
@@ -194,5 +207,15 @@ public class UserControllerTest {
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].username").value(dev.getUsername()));
+    }
+
+    @Test
+    public void testLogout() throws Exception {
+        mockMvc.perform(
+            post("/api/users/logout")
+                .cookie(new Cookie("jwt", "token")))
+                .andExpect(status().isOk())
+                .andExpect(content().string("Logged out successfully."))
+                .andExpect(cookie().maxAge("jwt", 0));
     }
 }

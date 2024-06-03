@@ -59,7 +59,7 @@ public class ProjectServiceImpl implements ProjectService {
                 throw new ProjectNotFoundException(id);
             }
         } else {
-            throw new UnauthorizedException("You are not authorized to delete this comment.");
+            throw new UnauthorizedException("User not authorized to delete this project.");
         }
     }
 }
