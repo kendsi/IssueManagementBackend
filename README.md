@@ -4,6 +4,11 @@
 
 이 프로젝트는 CAU SWE Term Project IssueManagementBackend를 위한 백엔드 애플리케이션입니다. Java Spring Boot 프레임워크를 기반으로 하며, RESTful API를 통해 프론트엔드와 통신합니다. 
 
+## 관련 프로젝트
+**프론트엔드 웹:** [https://github.com/uj-lee/IssueManagementFront](https://github.com/uj-lee/IssueManagementFront)
+
+**프론트엔드 콘솔:** [https://github.com/mldljyh/IssueManagement_Console](https://github.com/mldljyh/IssueManagement_Console)
+
 ## 예시 사이트
 **프론트엔드 웹 사이트:** [https://issue.mldljyh.tech](https://issue.mldljyh.tech)
 
