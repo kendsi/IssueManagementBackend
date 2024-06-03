@@ -14,6 +14,18 @@
 
 **백엔드 API 사이트:** [https://swe.mldljyh.tech](https://swe.mldljyh.tech)
 
+## 구조
+- **backend:**
+    - **config:** 애플리케이션 설정 파일들이 위치한다.
+    - **controller:** RESTful API 엔드포인트를 처리하는 컨트롤러 클래스들이 위치한다.
+    - **dto:** 데이터 전송 객체 (DTO) 클래스들이 위치한다.
+    - **exceptions:** 예외 처리 클래스들이 위치한다.
+    - **model:** 데이터베이스 엔터티와 도메인 모델 클래스들이 위치한다.
+    - **repository:** 데이터베이스 접근을 위한 JPA Repository 인터페이스들이 위치한다.
+    - **security:** JWT 토큰 기반 보안 설정과 관련된 클래스들이 위치한다.
+    - **service:** 비즈니스 로직을 처리하는 서비스 인터페이스와 구현체 클래스들이 위치한다.
+    - **util:** 유틸리티 함수들을 모아놓은 클래스들이 위치한다.
+    - 
 ## 기술 스택
 
 * Java 22
