@@ -3,9 +3,11 @@ package com.causwe.backend.controller;
 import com.causwe.backend.dto.CommentDTO;
 import com.causwe.backend.exceptions.CommentNotFoundException;
 import com.causwe.backend.exceptions.GlobalExceptionHandler;
+import com.causwe.backend.exceptions.IssueNotFoundException;
+import com.causwe.backend.exceptions.UnauthorizedException;
 import com.causwe.backend.model.Comment;
+import com.causwe.backend.model.Developer;
 import com.causwe.backend.model.Issue;
-import com.causwe.backend.model.Tester;
 import com.causwe.backend.model.User;
 import com.causwe.backend.security.JwtTokenProvider;
 import com.causwe.backend.service.CommentService;
@@ -15,9 +17,10 @@ import jakarta.servlet.http.Cookie;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.modelmapper.ModelMapper;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +38,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+@ExtendWith(MockitoExtension.class)
 @AutoConfigureMockMvc
 public class CommentControllerTest {
 
@@ -63,19 +67,13 @@ public class CommentControllerTest {
 
     @BeforeEach
     public void setUp() {
-        MockitoAnnotations.openMocks(this);
         mockMvc = MockMvcBuilders.standaloneSetup(commentController)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
         
         objectMapper = new ObjectMapper();
 
-        tester = new Tester();
-        tester.setUsername("tester");
-        tester.setPassword("tester");
-        tester.setId(3L);
-
-        issue = new Issue("Test Issue1", "Issue Description", tester);
+        issue = new Issue("Test Issue1", "Issue Description", Issue.Priority.MAJOR, tester);
         issue.setId(1L);
 
         comment = new Comment(issue, tester, "Test Comment");
@@ -131,6 +129,35 @@ public class CommentControllerTest {
     }
 
     @Test
+    public void testAddComment_NotFound() throws Exception {
+
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(3L);
+        when(modelMapper.map(any(CommentDTO.class), eq(Comment.class))).thenReturn(comment);
+        when(commentService.addComment(2L, comment, 3L)).thenThrow(new IssueNotFoundException(2L));
+
+        mockMvc.perform(post("/api/projects/1/issues/2/comments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(commentDTO))
+                .cookie(new Cookie("jwt", "token")))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void testAddComment_Unauthorized() throws Exception {
+        
+        when(jwtTokenProvider.getUserIdFromToken("")).thenReturn(null);
+        when(modelMapper.map(any(CommentDTO.class), eq(Comment.class))).thenReturn(comment);
+        when(commentService.addComment(1L, comment, null)).thenThrow(new UnauthorizedException("User not logged in"));
+
+        mockMvc.perform(post("/api/projects/1/issues/1/comments")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(commentDTO))
+                .cookie(new Cookie("jwt", "")))
+                .andExpect(status().isUnauthorized());
+    }
+
+
+    @Test
     public void testUpdateComment_Success() throws Exception {
         commentDTO.setContent("Updated Comment");
         comment.setContent("Updated Comment");
@@ -151,6 +178,17 @@ public class CommentControllerTest {
     }
 
     @Test
+    public void testUpdateComment_BadRequest() throws Exception {
+        commentDTO.setContent("");
+
+        mockMvc.perform(put("/api/projects/1/issues/1/comments/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(commentDTO))
+                .cookie(new Cookie("jwt", "token")))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     public void testUpdateComment_NotFound() throws Exception {
         when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(3L);
         when(modelMapper.map(any(CommentDTO.class), eq(Comment.class))).thenReturn(comment);
@@ -164,12 +202,44 @@ public class CommentControllerTest {
     }
 
     @Test
+    public void testUpdateComment_Unauthorized_NotPermitted() throws Exception {
+        User dev = new Developer();
+        dev.setUsername("dev");
+        dev.setPassword("dev");
+        dev.setId(2L);
+
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(2L);
+        when(modelMapper.map(any(CommentDTO.class), eq(Comment.class))).thenReturn(comment);
+        when(commentService.updateComment(1L, comment, 2L)).thenThrow(new UnauthorizedException("Only the author of the comment can update the comment."));
+
+        mockMvc.perform(put("/api/projects/1/issues/1/comments/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(commentDTO))
+                .cookie(new Cookie("jwt", "token")))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    public void testUpdateComment_Unauthorized_NotLoggedIn() throws Exception {
+
+        when(jwtTokenProvider.getUserIdFromToken("")).thenReturn(null);
+        when(modelMapper.map(any(CommentDTO.class), eq(Comment.class))).thenReturn(comment);
+        when(commentService.updateComment(1L, comment, null)).thenThrow(new UnauthorizedException("User not logged in"));
+
+        mockMvc.perform(put("/api/projects/1/issues/1/comments/1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(commentDTO))
+                .cookie(new Cookie("jwt", "")))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     public void testDeleteComment_Success() throws Exception {
         when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(3L);
         when(commentService.deleteComment(1L, 3L)).thenReturn(true);
 
         mockMvc.perform(delete("/api/projects/1/issues/1/comments/1")
-                .cookie(new Cookie("memberId", "token")))
+                .cookie(new Cookie("jwt", "token")))
                 .andExpect(status().isNoContent());
     }
 
@@ -181,5 +251,35 @@ public class CommentControllerTest {
         mockMvc.perform(delete("/api/projects/1/issues/1/comments/1")
                 .cookie(new Cookie("jwt", "token")))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    public void testDeleteComment_Unauthorized_NotPermitted() throws Exception {
+        User dev = new Developer();
+        dev.setUsername("dev");
+        dev.setPassword("dev");
+        dev.setId(2L);
+
+        when(jwtTokenProvider.getUserIdFromToken("token")).thenReturn(2L);
+        when(commentService.deleteComment(1L, 2L)).thenThrow(new UnauthorizedException("You are not authorized to delete this comment."));
+
+        mockMvc.perform(delete("/api/projects/1/issues/1/comments/1")
+                .cookie(new Cookie("jwt", "token")))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    public void testDeleteComment_Unauthorized_NotLoggedIn() throws Exception {
+        User dev = new Developer();
+        dev.setUsername("dev");
+        dev.setPassword("dev");
+        dev.setId(2L);
+
+        when(jwtTokenProvider.getUserIdFromToken("")).thenReturn(null);
+        when(commentService.deleteComment(1L, null)).thenThrow(new UnauthorizedException("User not logged in"));
+
+        mockMvc.perform(delete("/api/projects/1/issues/1/comments/1")
+                .cookie(new Cookie("jwt", "")))
+                .andExpect(status().isUnauthorized());
     }
 }

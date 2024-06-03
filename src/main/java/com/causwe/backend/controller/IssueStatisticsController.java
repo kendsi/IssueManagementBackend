@@ -42,6 +42,7 @@ public class IssueStatisticsController {
         return new ResponseEntity<>(issuesPerFixer, HttpStatus.OK);
     }
 
+
     @GetMapping("/issuesPerDayAndStatusInWeek/{status}")
     @Cacheable(value = "issuesPerDayAndStatusInWeek", key = "{#projectId, #status}")
     public ResponseEntity<Map<String, Long>> getIssuesPerDayAndStatusInWeek(@PathVariable Long projectId, @PathVariable Issue.Status status) {
