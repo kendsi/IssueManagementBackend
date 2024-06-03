@@ -119,8 +119,8 @@ CREATE TABLE issue_embeddings (
 프로젝트 루트 디렉토리에서 다음 명령어를 실행하여 애플리케이션을 빌드하고 실행합니다.
 
 ```bash
-mvn clean install
-mvn spring-boot:run
+mvn clean package
+java -jar target/backend-0.0.1-SNAPSHOT.jar
 ```
 
 애플리케이션이 실행되면 `http://localhost:8080` 에서 접속할 수 있습니다.
